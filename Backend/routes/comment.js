@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const Comment = require('../models/Comment');
 const User = require('../models/User');
-const {jwtAuthMiddleware}=require('./../jwt.js')
 
 // GET comments for an article
 router.get('/:articleId', async (req, res) => {
@@ -15,7 +14,7 @@ router.get('/:articleId', async (req, res) => {
 });
 
 // POST a new comment
-router.post('/', jwtAuthMiddleware,async (req, res) => {
+router.post('/',async (req, res) => {
   try {
     const { articleId,text } = req.body;
     const newComment = new Comment({ articleId, userId: req.user.id, text });

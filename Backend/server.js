@@ -1,30 +1,37 @@
+// server.js
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
 const passport = require('passport');
-const db=require('./db');
 require('dotenv').config();
+const db = require('./db');
 
 const app = express();
-app.use(cors());
+
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true
+}));
 app.use(express.json());
-app.use(session({ secret: 'trendwise', resave: false, saveUninitialized: true }));
+app.use(session({
+  secret: 'trendwise_session_secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false } // set to true only if using https
+}));
 app.use(passport.initialize());
 app.use(passport.session());
 
-const articleRoutes=require("./routes/article")
-const commentRoutes=require("./routes/comment")
-const userRoutes=require("./routes/auth")
+// Routes
+const articleRoutes = require('./routes/article');
+const commentRoutes = require('./routes/comment');
+const authRoutes = require('./routes/auth');
 
-app.get("/",(req,res)=>{
-    res.send("Hello")
-})
 app.use('/api/article', articleRoutes);
 app.use('/api/comment', commentRoutes);
-app.use('/api/auth', userRoutes);
+app.use('/api/auth', authRoutes);
 
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () =>{
-    console.log(`Server running on port ${PORT}`)
+const PORT = process.env.PORT || 5050;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });

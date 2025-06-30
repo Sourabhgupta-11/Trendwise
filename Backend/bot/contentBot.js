@@ -43,11 +43,33 @@ Just return the titles only as plain list without numbering.
 };
 
 // Mock function to generate related media (can be improved later)
+const axios = require('axios');
+
 const fetchRelatedMedia = async (topic) => {
-  return [
-    `https://source.unsplash.com/featured/?${encodeURIComponent(topic)}`,
-    `https://www.youtube.com/embed/dQw4w9WgXcQ`
-  ];
+  try {
+    const res = await axios.get('https://api.unsplash.com/search/photos', {
+      params: {
+        query: topic,
+        per_page: 1,
+      },
+      headers: {
+        Authorization: `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}`,
+      },
+    });
+
+    const imageUrl = res.data.results[0]?.urls?.regular || 'https://via.placeholder.com/600x400';
+
+    return [
+      imageUrl,
+      `https://www.youtube.com/embed/dQw4w9WgXcQ`,
+    ];
+  } catch (error) {
+    console.error('❌ Unsplash API error:', error.message);
+    return [
+      'https://via.placeholder.com/600x400',
+      `https://www.youtube.com/embed/dQw4w9WgXcQ`,
+    ];
+  }
 };
 
 // Generate article using Gemini API
