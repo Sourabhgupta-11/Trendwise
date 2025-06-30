@@ -34,7 +34,7 @@ function App() {
       <Routes>
         <Route path="/" element={user ? <Home user={user} /> : <Navigate to="/login" />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/article/:slug" element={<ArticleDetail />} />
+        <Route path="/article/:slug" element={<ArticleDetail user={user}/>} />
       </Routes>
     </Router>
   );
