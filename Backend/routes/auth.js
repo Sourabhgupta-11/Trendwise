@@ -1,10 +1,13 @@
+// trendwise/backend/routes/auth.js
 const express = require('express');
 const router = express.Router();
 const passport = require('passport');
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-require("dotenv").config()
+require('dotenv').config();
 
+// ⬇️ Configure Passport Google Strategy
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -27,36 +30,30 @@ passport.use(new GoogleStrategy({
   }
 }));
 
-passport.serializeUser((user, done) => {
-  done(null, user.id);
-});
+// ⬇️ Don't use sessions
+passport.serializeUser(() => {});
+passport.deserializeUser(() => {});
 
-passport.deserializeUser((id, done) => {
-  User.findById(id).then(user => done(null, user)).catch(done);
-});
+// 🔐 JWT Signer
+const generateToken = (user) => {
+  return jwt.sign(
+    { id: user._id, name: user.name, email: user.email },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+};
 
-// Auth Routes
+// 🌐 Google OAuth Entry
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
-router.get('/google/callback', passport.authenticate('google', {
-  failureRedirect: '/login',
-  session: true
-}), (req, res) => {
-  res.redirect('/');
-});
+// ✅ Google OAuth Callback (returns JWT)
+router.get('/google/callback', passport.authenticate('google', { session: false }), (req, res) => {
+  const token = generateToken(req.user);
 
-router.get('/logout', (req, res) => {
-  req.logout(() => {
-    res.redirect('/');
-  });
-});
+  // Option 1: Send JWT in response
+  res.redirect(`http://localhost:3000/auth-success?token=${token}`); // Frontend can extract it
 
-router.get('/me', (req, res) => {
-  if (req.isAuthenticated()) {
-    res.json(req.user);
-  } else {
-    res.status(401).json({ error: 'Not authenticated' });
-  }
+  // Option 2: res.json({ token }); ← use this if you want raw response
 });
 
 module.exports = router;

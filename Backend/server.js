@@ -16,6 +16,9 @@ const articleRoutes=require("./routes/article")
 const commentRoutes=require("./routes/comment")
 const userRoutes=require("./routes/auth")
 
+app.get("/",(req,res)=>{
+    res.send("Hello")
+})
 app.use('/api/article', articleRoutes);
 app.use('/api/comment', commentRoutes);
 app.use('/api/auth', userRoutes);
