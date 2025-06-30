@@ -1,17 +1,27 @@
-const express=require('express');
-const app=express();
+const express = require('express');
+const cors = require('cors');
+const session = require('express-session');
+const passport = require('passport');
 const db=require('./db');
 require('dotenv').config();
 
-const port = process.env.PORT|| 4000 
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(session({ secret: 'trendwise', resave: false, saveUninitialized: true }));
+app.use(passport.initialize());
+app.use(passport.session());
 
-const bodyparser=require('body-parser')
-app.use(bodyparser.json())
+const articleRoutes=require("./routes/article")
+const commentRoutes=require("./routes/comment")
+const userRoutes=require("./routes/auth")
 
-app.get('/',(req,res)=>{
-    res.send("Hello users");
-})
+app.use('/api/article', articleRoutes);
+app.use('/api/comment', commentRoutes);
+app.use('/api/auth', userRoutes);
 
-app.listen(port,()=>{
-    console.log(`listening on Port ${port}`);
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () =>{
+    console.log(`Server running on port ${PORT}`)
 });
