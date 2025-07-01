@@ -13,12 +13,8 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
-app.use(session({
-  secret: 'trendwise_session_secret',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { secure: false } // set to true only if using https
-}));
+app.use(express.static('public'));
+app.use(session({secret: 'trendwise_session_secret',resave: false,saveUninitialized: false,cookie: { secure: false } }));
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -26,10 +22,12 @@ app.use(passport.session());
 const articleRoutes = require('./routes/article');
 const commentRoutes = require('./routes/comment');
 const authRoutes = require('./routes/auth');
+const sitemapRoutes = require('./routes/sitemap');
 
 app.use('/api/article', articleRoutes);
 app.use('/api/comment', commentRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/', sitemapRoutes)
 
 const PORT = process.env.PORT || 5050;
 app.listen(PORT, () => {
