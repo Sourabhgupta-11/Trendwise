@@ -8,7 +8,7 @@ require('dotenv').config();
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: 'http://localhost:5050/api/auth/google/callback'
+  callbackURL: 'https://trendwise-backend-3y80.onrender.com/api/auth/google/callback'
 }, async (accessToken, refreshToken, profile, done) => {
   try {
     let user = await User.findOne({ googleId: profile.id });
@@ -40,7 +40,7 @@ router.get('/google', passport.authenticate('google', { scope: ['profile', 'emai
 router.get('/google/callback',
   passport.authenticate('google', { session: true, failureRedirect: '/login' }),
   (req, res) => {
-    res.redirect('http://localhost:3000'); // session cookie gets set
+    res.redirect('http://localhost:3000'); 
   }
 );
 
