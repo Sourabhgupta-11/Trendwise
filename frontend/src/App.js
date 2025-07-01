@@ -1,14 +1,21 @@
 // src/App.js
-import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
-import Login from './pages/Login';
-import Home from './pages/HomePage';
-import ArticleDetail from './pages/ArticleDetail';
-import Navbar from './components/Navbar';
-import Spinner from './components/Spinner'; 
-import axios from 'axios';
+import React, { useEffect, useState } from "react";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
+import Login from "./pages/Login";
+import Home from "./pages/HomePage";
+import ArticleDetail from "./pages/ArticleDetail";
+import Navbar from "./components/Navbar";
+import Spinner from "./components/Spinner";
+import axios from "axios";
+import AdminDashboard from "./pages/AdminDashboard";
 
-axios.defaults.baseURL = 'http://localhost:5050/api';
+axios.defaults.baseURL = "http://localhost:5050/api";
 axios.defaults.withCredentials = true;
 
 const AppWrapper = () => {
@@ -18,12 +25,13 @@ const AppWrapper = () => {
   const location = useLocation();
 
   useEffect(() => {
-    if (location.pathname === '/login') {
+    if (location.pathname === "/login") {
       setLoading(false);
       return;
     }
 
-    axios.get('/auth/me')
+    axios
+      .get("/auth/me")
       .then((res) => {
         setUser(res.data);
         setLoading(false);
@@ -35,16 +43,16 @@ const AppWrapper = () => {
   }, [location.pathname]);
 
   const handleLogout = async () => {
-    setLoggingOut(true); 
+    setLoggingOut(true);
     try {
-      await axios.post('/auth/logout');
+      await axios.post("/auth/logout");
       setTimeout(() => {
         setUser(null);
         setLoggingOut(false);
-        window.location.href = '/login';
-      }, 1000); 
+        window.location.href = "/login";
+      }, 1000);
     } catch (err) {
-      console.error('Logout failed:', err.message);
+      console.error("Logout failed:", err.message);
       setLoggingOut(false);
     }
   };
@@ -54,16 +62,45 @@ const AppWrapper = () => {
   return (
     <>
       {loggingOut && (
-        <div className="position-fixed top-0 start-0 w-100 h-100 bg-light d-flex align-items-center justify-content-center" style={{ zIndex: 9999 }}>
+        <div
+          className="position-fixed top-0 start-0 w-100 h-100 bg-light d-flex align-items-center justify-content-center"
+          style={{ zIndex: 9999 }}
+        >
           <Spinner />
         </div>
       )}
 
-      {location.pathname !== '/login' && <Navbar user={user} onLogout={handleLogout} />}
+      {location.pathname !== "/login" && (
+        <Navbar user={user} onLogout={handleLogout} />
+      )}
 
       <Routes>
-        <Route path="/" element={user ? <Home user={user} /> : <Navigate to="/login" />} />
+        <Route
+          path="/"
+          element={
+            user ? (
+              user.role === "admin" ? (
+                <Navigate to="/admin" />
+              ) : (
+                <Home user={user} />
+              )
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
         <Route path="/login" element={<Login />} />
+        <Route
+          path="/admin"
+          element={
+            user?.role === "admin" ? (
+              <AdminDashboard />
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+
         <Route path="/article/:slug" element={<ArticleDetail user={user} />} />
       </Routes>
     </>

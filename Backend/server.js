@@ -30,14 +30,18 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Routes
+
 const articleRoutes = require('./routes/article');
 const commentRoutes = require('./routes/comment');
 const authRoutes = require('./routes/auth');
+const adminRoutes=require("./routes/admin.js")
 const sitemapRoutes = require('./routes/sitemap');
 
+app.use('/api/admin', adminRoutes);
 app.use('/api/article', articleRoutes);
 app.use('/api/comment', commentRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/', sitemapRoutes)
 
 const PORT = process.env.PORT || 5050;
