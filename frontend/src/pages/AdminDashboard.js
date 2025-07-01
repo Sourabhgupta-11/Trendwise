@@ -8,7 +8,7 @@ const AdminDashboard = ({ user }) => {
   const [newArticle, setNewArticle] = useState({ title: '', slug: '', meta: '', content: '', media: [] });
   const [editingId, setEditingId] = useState(null);
 
-  axios.defaults.baseURL = 'http://localhost:5050/api';
+  axios.defaults.baseURL = process.env.REACT_APP_API_URL;
   axios.defaults.withCredentials = true; 
 
   useEffect(() => {
@@ -17,7 +17,7 @@ const AdminDashboard = ({ user }) => {
 
   const fetchArticles = async () => {
     try {
-      const res = await axios.get('/admin/articles');
+      const res = await axios.get('/api/admin/articles');
       setArticles(res.data);
     } catch (err) {
       alert('Error fetching articles');
@@ -27,7 +27,7 @@ const AdminDashboard = ({ user }) => {
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this article?')) return;
     try {
-      await axios.delete(`/admin/articles/${id}`);
+      await axios.delete(`/api/admin/articles/${id}`);
       fetchArticles();
     } catch (err) {
       alert('Error deleting article');
@@ -42,9 +42,9 @@ const AdminDashboard = ({ user }) => {
   const handleSave = async () => {
     try {
       if (editingId) {
-        await axios.put(`/admin/articles/${editingId}`, newArticle);
+        await axios.put(`/api/admin/articles/${editingId}`, newArticle);
       } else {
-        await axios.post('/admin/articles', newArticle);
+        await axios.post('/api/admin/articles', newArticle);
       }
       setNewArticle({ title: '', slug: '', meta: '', content: '', media: [] });
       setEditingId(null);

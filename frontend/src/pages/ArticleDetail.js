@@ -6,10 +6,13 @@ const ArticleDetail = () => {
   const { slug } = useParams();
   const [article, setArticle] = useState(null);
 
+  axios.defaults.baseURL = process.env.REACT_APP_API_URL;
+  axios.defaults.withCredentials = true; 
+
   useEffect(() => {
     const fetchArticle = async () => {
       try {
-        const res = await axios.get(`http://localhost:5050/api/article/${slug}`);
+        const res = await axios.get(`/api/article/${slug}`);
         setArticle(res.data);
 
         document.title = res.data.title;

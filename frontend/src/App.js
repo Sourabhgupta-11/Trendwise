@@ -1,4 +1,3 @@
-// src/App.js
 import React, { useEffect, useState } from "react";
 import {
   BrowserRouter as Router,
@@ -15,7 +14,7 @@ import Spinner from "./components/Spinner";
 import axios from "axios";
 import AdminDashboard from "./pages/AdminDashboard";
 
-axios.defaults.baseURL = "http://localhost:5050/api";
+axios.defaults.baseURL = process.env.REACT_APP_API_URL;
 axios.defaults.withCredentials = true;
 
 const AppWrapper = () => {
@@ -31,7 +30,7 @@ const AppWrapper = () => {
     }
 
     axios
-      .get("/auth/me")
+      .get("/api/auth/me")
       .then((res) => {
         setUser(res.data);
         setLoading(false);
@@ -45,7 +44,7 @@ const AppWrapper = () => {
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
-      await axios.post("/auth/logout");
+      await axios.post("/api/auth/logout");
       setTimeout(() => {
         setUser(null);
         setLoggingOut(false);

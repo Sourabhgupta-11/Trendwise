@@ -4,13 +4,17 @@ import axios from "axios";
 import ArticleCard from "../components/ArticleCard";
 
 const HomePage = ({ user }) => {
+  
   const [articles, setArticles] = useState([]);
   const query = new URLSearchParams(useLocation().search).get("search");
 
+  axios.defaults.baseURL = process.env.REACT_APP_API_URL;
+  axios.defaults.withCredentials = true; 
+  
   useEffect(() => {
     const fetchArticles = async () => {
       try {
-        const res = await axios.get("http://localhost:5050/api/article");
+        const res = await axios.get(`/api/article`);
         let data = res.data;
         if (query) {
           data = data.filter((article) =>

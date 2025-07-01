@@ -5,6 +5,9 @@ const CommentModal = ({ articleId, user, onClose, isOpen }) => {
   const [comments, setComments] = useState([]);
   const [input, setInput] = useState("");
 
+  axios.defaults.baseURL = process.env.REACT_APP_API_URL;
+  axios.defaults.withCredentials = true; 
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -20,7 +23,7 @@ const CommentModal = ({ articleId, user, onClose, isOpen }) => {
     const fetchComments = async () => {
       try {
         const res = await axios.get(
-          `http://localhost:5050/api/comment/${articleId}`
+          `/api/comment/${articleId}`
         );
         setComments(res.data);
       } catch (err) {
@@ -35,7 +38,7 @@ const CommentModal = ({ articleId, user, onClose, isOpen }) => {
     if (!input.trim() || !user) return;
 
     try {
-      const res = await axios.post("http://localhost:5050/api/comment", {
+      const res = await axios.post("/api/comment", {
         articleId,
         userId: user._id,
         text: input.trim(),
