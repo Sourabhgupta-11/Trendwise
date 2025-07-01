@@ -14,7 +14,18 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.static('public'));
-app.use(session({secret: 'trendwise_session_secret',resave: false,saveUninitialized: false,cookie: { secure: false } }));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: false, // true if using HTTPS
+      sameSite: 'lax'
+    }
+  })
+);
 app.use(passport.initialize());
 app.use(passport.session());
 

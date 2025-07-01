@@ -1,74 +1,133 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-const CommentSection = ({ articleId, user }) => {
+const CommentModal = ({ articleId, user, onClose, isOpen }) => {
   const [comments, setComments] = useState([]);
-  const [text, setText] = useState("");
+  const [input, setInput] = useState("");
 
   useEffect(() => {
-    const fetch = async () => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+    return () => (document.body.style.overflow = "auto");
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !articleId) return;
+
+    const fetchComments = async () => {
       try {
-        const res = await axios.get(`http://localhost:5050/api/comment/${articleId}`);
+        const res = await axios.get(
+          `http://localhost:5050/api/comment/${articleId}`
+        );
         setComments(res.data);
       } catch (err) {
-        console.error("Error loading comments:", err.message);
+        console.error("Failed to fetch comments:", err.message);
       }
     };
-    fetch();
-  }, [articleId]);
+
+    fetchComments();
+  }, [isOpen, articleId]);
 
   const postComment = async () => {
-    if (!text.trim() || !user) return;
+    if (!input.trim() || !user) return;
+
     try {
       const res = await axios.post("http://localhost:5050/api/comment", {
         articleId,
         userId: user._id,
-        text,
+        text: input.trim(),
       });
-      setComments([...comments, res.data]);
-      setText("");
+      setComments((prev) => [...prev, res.data]);
+      setInput("");
     } catch (err) {
       console.error("Failed to post comment:", err.message);
     }
   };
 
-  return (
-    <div className="mt-3">
-      <div
-        className="bg-light p-2 rounded"
-        style={{ maxHeight: "180px", overflowY: "auto" }}
-      >
-        {comments.length > 0 ? (
-          comments.map((c) => (
-            <div key={c._id} className="mb-2 border-bottom pb-1">
-              <strong>{c.userId?.name || "Anonymous"}</strong>
-              <p className="mb-1 small">{c.text}</p>
-              <small className="text-muted">
-                {new Date(c.createdAt).toLocaleString()}
-              </small>
-            </div>
-          ))
-        ) : (
-          <p className="text-muted small">No comments yet.</p>
-        )}
-      </div>
+  if (!isOpen) return null;
 
-      {user && (
-        <div className="mt-2">
-          <textarea
-            rows="2"
-            className="form-control form-control-sm"
-            placeholder="Write a comment..."
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-          />
-          <button className="btn btn-primary btn-sm mt-1" onClick={postComment}>
-            Post
-          </button>
+  return (
+    <div
+      className="modal fade show d-block"
+      tabIndex="-1"
+      role="dialog"
+      style={{
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        className="modal-dialog modal-dialog-scrollable modal-lg"
+        role="document"
+      >
+        <div className="modal-content">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">💬 Comments</h5>
+              <button
+                type="button"
+                className="btn-close"
+                onClick={onClose}
+              ></button>
+            </div>
+
+            <div className="modal-body">
+              {comments.length > 0 ? (
+                comments.map((c) => (
+                  <div key={c._id} className="d-flex align-items-start mb-3">
+                    <img
+                      src={
+                        c.userId?.avatar ||
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                          c.userId?.name || "User"
+                        )}&background=random`
+                      }
+                      alt="avatar"
+                      className="rounded-circle me-2"
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        objectFit: "cover",
+                      }}
+                    />
+                    <div className="flex-grow-1">
+                      <div className="fw-semibold">
+                        {c.userId?.name || "Anonymous"}
+                      </div>
+                      <div className="small text-muted mb-1">
+                        {new Date(c.createdAt).toLocaleString()}
+                      </div>
+                      <div className="bg-light rounded p-2">{c.text}</div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-muted">No comments yet.</p>
+              )}
+            </div>
+
+            {user && (
+              <div className="modal-footer d-block">
+                <textarea
+                  className="form-control mb-2"
+                  rows="2"
+                  placeholder="Write a comment..."
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                />
+                <button className="btn btn-primary" onClick={postComment}>
+                  Post
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
 
-export default CommentSection;
+export default CommentModal;

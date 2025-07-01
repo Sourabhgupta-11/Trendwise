@@ -2,35 +2,44 @@ import React from 'react';
 
 const Login = () => {
   const handleGoogleLogin = () => {
-    // Redirect to backend Google OAuth route
     window.location.href = 'http://localhost:5050/api/auth/google';
   };
 
   return (
     <div className="container-fluid min-vh-100 d-flex justify-content-center align-items-center bg-light">
       <div
-        className="card shadow p-4 text-center"
-        style={{ maxWidth: '400px', width: '100%', borderRadius: '12px' }}
+        className="card shadow-lg p-5 text-center"
+        style={{ maxWidth: '500px', width: '100%', borderRadius: '16px' }}
       >
-        <img
-          src="/logo.png"
-          alt="TrendWise Logo"
-          style={{ width: '50px', marginBottom: '15px' }}
-        />
-        <h3 className="mb-2">Welcome to TrendWise</h3>
-        <p className="text-muted mb-4 small">Sign in with Google to continue</p>
+        <div className="mb-4">
+          <h1 className="fw-bold" style={{ color: '#0d6efd' }}>TrendWise</h1>
+          <p className="text-muted fs-6">
+            Discover AI-curated trending content. Sign in to explore the world!
+          </p>
+        </div>
 
-        <button
-          onClick={handleGoogleLogin}
-          className="btn btn-outline-primary w-100 d-flex align-items-center justify-content-center gap-2"
-        >
-          <img
-            src="https://developers.google.com/identity/images/g-logo.png"
-            alt="Google icon"
-            style={{ width: '20px', height: '20px' }}
-          />
-          <span>Sign in with Google</span>
-        </button>
+        <hr />
+
+        <div className="mt-4">
+          <button
+            onClick={handleGoogleLogin}
+            className="btn btn-outline-primary w-100 d-flex align-items-center justify-content-center gap-2"
+            style={{ padding: '10px 16px', fontSize: '16px' }}
+          >
+            <img
+              src="https://developers.google.com/identity/images/g-logo.png"
+              alt="Google"
+              style={{ width: '20px', height: '20px' }}
+            />
+            <span>Continue with Google</span>
+          </button>
+        </div>
+
+        <div className="mt-4">
+          <small className="text-muted">
+            By continuing, you agree to TrendWise's Terms and Privacy Policy.
+          </small>
+        </div>
       </div>
     </div>
   );

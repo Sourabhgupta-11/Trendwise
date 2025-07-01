@@ -48,12 +48,6 @@ router.get('/google/callback',
   }
 );
 
-router.get('/logout', (req, res) => {
-  req.logout(() => {
-    res.redirect('/');
-  });
-});
-
 router.get('/me', (req, res) => {
   if (req.isAuthenticated()) {
     res.json(req.user);
@@ -63,3 +57,20 @@ router.get('/me', (req, res) => {
 });
 
 module.exports = router;
+// POST /api/auth/logout
+router.post('/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Logout error:', err);
+      return res.status(500).json({ message: 'Logout failed' });
+    }
+    res.clearCookie('connect.sid', {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax', // or 'strict' if needed
+      secure: false,   // true if using HTTPS
+    });
+    res.status(200).json({ message: 'Logged out successfully' });
+  });
+});
+
