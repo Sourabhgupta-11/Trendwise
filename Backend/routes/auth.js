@@ -40,7 +40,7 @@ router.get('/google', passport.authenticate('google', { scope: ['profile', 'emai
 router.get('/google/callback',
   passport.authenticate('google', { session: true, failureRedirect: '/login' }),
   (req, res) => {
-    res.redirect('https://trendwise-swart.vercel.app/'); 
+    res.redirect('https://trendwise-swart.vercel.app'); 
   }
 );
 

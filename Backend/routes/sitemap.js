@@ -5,7 +5,7 @@ const Article = require("../models/Article");
 router.get("/sitemap.xml", async (req, res) => {
   try {
     const articles = await Article.find();
-    const hostname = "https://trendwise-swart.vercel.app/"; 
+    const hostname = "https://trendwise-swart.vercel.app"; 
 
     const urls = articles.map((article) => {
       return `
