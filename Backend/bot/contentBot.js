@@ -1,25 +1,35 @@
-// trendwise/backend/bot/contentBot.js
-
 require('dotenv').config();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const googleTrends = require('google-trends-api');
 const Article = require('../models/Article');
 const db= require('../db');
+const axios = require('axios');
 
 // Gemini API setup
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-// Utility: Generate slug from title
+// Generate slug from title
 const generateSlug = (title) => {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 };
 
-// ✅ Fetch trending topics using google-trends-api
+// Here we fetch trending topics using google-trends-api
 const fetchTrendingTopics = async () => {
-  const prompt = `
-List the top 5 trending topics in the United States today based on news and online discussions.
-Just return the titles only as plain list without numbering.
+const prompt = `
+You are a bot designed to extract trending topics.
+
+Return exactly 10 unique, highly trending news topics in India today based on current events and online discussions.
+
+- Only list the titles.
+- No numbering, no extra text.
+- One topic per line.
+
+Example format:
+Topic 1
+Topic 2
+...
+Topic 10
 `;
 
   try {
@@ -32,7 +42,7 @@ Just return the titles only as plain list without numbering.
       .map(line => line.trim())
       .filter(Boolean);
 
-    return lines.slice(0, 5).map(title => ({
+    return lines.slice(0, 10).map(title => ({
       title,
       traffic: 'N/A'
     }));
@@ -42,12 +52,10 @@ Just return the titles only as plain list without numbering.
   }
 };
 
-// Mock function to generate related media (can be improved later)
-const axios = require('axios');
-
 const fetchRelatedMedia = async (topic) => {
   try {
-    const res = await axios.get('https://api.unsplash.com/search/photos', {
+    // 🔍 Fetch image from Unsplash
+    const imageRes = await axios.get('https://api.unsplash.com/search/photos', {
       params: {
         query: topic,
         per_page: 1,
@@ -57,14 +65,31 @@ const fetchRelatedMedia = async (topic) => {
       },
     });
 
-    const imageUrl = res.data.results[0]?.urls?.regular || 'https://via.placeholder.com/600x400';
+    const imageUrl =
+      imageRes.data.results[0]?.urls?.regular || 'https://via.placeholder.com/600x400';
 
-    return [
-      imageUrl,
-      `https://www.youtube.com/embed/dQw4w9WgXcQ`,
-    ];
+    // 🎥 Fetch related YouTube video
+    const youtubeRes = await axios.get(
+      'https://www.googleapis.com/youtube/v3/search',
+      {
+        params: {
+          part: 'snippet',
+          q: topic,
+          type: 'video',
+          maxResults: 1,
+          key: process.env.YOUTUBE_API_KEY,
+        },
+      }
+    );
+
+    const videoId = youtubeRes.data.items?.[0]?.id?.videoId;
+    const videoUrl = videoId
+      ? `https://www.youtube.com/embed/${videoId}`
+      : `https://www.youtube.com/embed/dQw4w9WgXcQ`; 
+
+    return [imageUrl, videoUrl];
   } catch (error) {
-    console.error('❌ Unsplash API error:', error.message);
+    console.error('❌ Media fetch error:', error.message);
     return [
       'https://via.placeholder.com/600x400',
       `https://www.youtube.com/embed/dQw4w9WgXcQ`,
@@ -72,7 +97,7 @@ const fetchRelatedMedia = async (topic) => {
   }
 };
 
-// Generate article using Gemini API
+//Here we are Generating article using Gemini API
 const generateArticle = async (topic, media) => {
 const prompt = `
 You're an expert blog writer.
@@ -98,7 +123,7 @@ Return only plain HTML tags and content.
   }
 };
 
-// Main Bot Function
+//Main Bot Function to run contentBot
 const runContentBot = async () => {
   const topics = await fetchTrendingTopics();
 
@@ -135,7 +160,6 @@ const runContentBot = async () => {
   }
 };
 
-// Run if executed directly
 if (require.main === module) {
   runContentBot();
 }

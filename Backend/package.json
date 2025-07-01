@@ -2,7 +2,6 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "axios": "^1.10.0",
-    "bcrypt": "^6.0.0",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
@@ -10,13 +9,11 @@
     "express-session": "^1.18.1",
     "google-auth-library": "^10.1.0",
     "google-trends-api": "^4.9.2",
-    "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.16.1",
+    "node-cron": "^4.2.0",
     "nodemon": "^3.1.10",
-    "openai": "^5.8.2",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "rss-parser": "^3.13.0",
     "xml2js": "^0.6.2"
   }
 }

@@ -9,7 +9,7 @@ const AdminDashboard = ({ user }) => {
   const [editingId, setEditingId] = useState(null);
 
   axios.defaults.baseURL = 'http://localhost:5050/api';
-  axios.defaults.withCredentials = true; // 🔥 For session-based auth
+  axios.defaults.withCredentials = true; 
 
   useEffect(() => {
     fetchArticles();

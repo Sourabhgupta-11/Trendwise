@@ -5,7 +5,7 @@ const Article = require("../models/Article");
 router.get("/sitemap.xml", async (req, res) => {
   try {
     const articles = await Article.find();
-    const hostname = "http://localhost:3000"; // change to your domain on production
+    const hostname = "http://localhost:3000"; 
 
     const urls = articles.map((article) => {
       return `

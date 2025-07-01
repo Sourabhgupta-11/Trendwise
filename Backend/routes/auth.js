@@ -1,4 +1,3 @@
-// routes/auth.js
 const express = require('express');
 const router = express.Router();
 const passport = require('passport');
@@ -6,7 +5,6 @@ const User = require('../models/User');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 require('dotenv').config();
 
-// Strategy
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
   clientSecret: process.env.GOOGLE_CLIENT_SECRET,
@@ -29,7 +27,6 @@ passport.use(new GoogleStrategy({
   }
 }));
 
-// Session handlers
 passport.serializeUser((user, done) => {
   done(null, user.id);
 });
@@ -38,7 +35,6 @@ passport.deserializeUser(async (id, done) => {
   done(null, user);
 });
 
-// Routes
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 router.get('/google/callback',
@@ -56,8 +52,6 @@ router.get('/me', (req, res) => {
   }
 });
 
-module.exports = router;
-// POST /api/auth/logout
 router.post('/logout', (req, res) => {
   req.session.destroy((err) => {
     if (err) {
@@ -74,3 +68,4 @@ router.post('/logout', (req, res) => {
   });
 });
 
+module.exports = router;

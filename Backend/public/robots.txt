@@ -1,3 +1,4 @@
 User-agent: *
 Allow: /
-Sitemap: http://localhost:5050/sitemap.xml
+Disallow: /admin
+Sitemap: https://trendwise.com/sitemap.xml
