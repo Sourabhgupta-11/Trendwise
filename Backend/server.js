@@ -49,8 +49,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/', sitemapRoutes)
 
-
-const PORT = process.env.PORT || 5050;
 app.get('/api/trigger-bot', async (req, res) => {
   const secret = req.headers['x-cron-secret'];
   if (secret !== process.env.CRON_SECRET) return res.status(401).json({ error: 'Unauthorized' });
