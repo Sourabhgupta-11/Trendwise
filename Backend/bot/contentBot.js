@@ -125,6 +125,10 @@ Return only plain HTML tags and content.
 
 //Main Bot Function to run contentBot
 const runContentBot = async () => {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  await Article.deleteMany({ createdAt: { $lt: sevenDaysAgo } });
+  console.log('🗑️ Old articles cleaned up');
+
   const topics = await fetchTrendingTopics();
 
   for (const trend of topics) {
