@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import axios from "axios";
 import ArticleCard from "../components/ArticleCard";
 
-const categories = ["All", "Tech", "Sports", "Politics", "Entertainment", "Business", "General"];
+const categories = ["All", "Tech", "Sports", "Politics", "Entertainment", "Business", "Education", "General"];
 
 const SkeletonCard = () => (
   <div className="col-md-4 mb-4">
