@@ -1,10 +1,20 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 const Navbar = ({ user, onLogout }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchVal, setSearchVal] = useState("");
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth >= 768) setMenuOpen(false);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -22,15 +32,9 @@ const Navbar = ({ user, onLogout }) => {
         .tw-search::placeholder { color: rgba(255,255,255,0.4) !important; }
         .tw-search { color: #f9fafb !important; }
         .tw-search:focus { outline: none; border-color: rgba(129,140,248,0.6) !important; background: rgba(255,255,255,0.1) !important; }
-        .tw-nav-link { color: #d1d5db !important; text-decoration: none; font-size: 0.95rem; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); display: block; }
-        .tw-nav-link:hover { color: #818cf8 !important; }
-        .tw-hamburger { background: none; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 10px; cursor: pointer; color: #f9fafb; font-size: 1.1rem; }
-        .tw-mobile-menu { background: #16213e; border-top: 1px solid rgba(255,255,255,0.07); padding: 12px 20px 20px; }
-        @media (min-width: 768px) { .tw-hamburger { display: none !important; } .tw-mobile-menu { display: none !important; } }
-        @media (max-width: 767px) { .tw-desktop-right { display: none !important; } }
       `}</style>
 
-      {/* Main navbar bar */}
+      {/* Navbar bar */}
       <nav style={{
         background: "#1a1a2e",
         borderBottom: "1px solid rgba(255,255,255,0.07)",
@@ -61,90 +65,105 @@ const Navbar = ({ user, onLogout }) => {
           </span>
         </Link>
 
-        {/* Desktop right side */}
-        <div className="tw-desktop-right" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <form onSubmit={handleSearch} style={{ display: "flex" }}>
-            <input
-              type="search"
-              className="tw-search"
-              value={searchVal}
-              onChange={(e) => setSearchVal(e.target.value)}
-              placeholder="Search articles..."
+        {/* DESKTOP right side — only renders on desktop */}
+        {!isMobile && (
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <form onSubmit={handleSearch} style={{ display: "flex" }}>
+              <input
+                type="search"
+                className="tw-search"
+                value={searchVal}
+                onChange={(e) => setSearchVal(e.target.value)}
+                placeholder="Search articles..."
+                style={{
+                  background: "rgba(255,255,255,0.07)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: "999px",
+                  padding: "7px 18px",
+                  fontSize: "0.85rem",
+                  width: "210px",
+                  transition: "all 0.2s",
+                }}
+              />
+            </form>
+
+            {user ? (
+              <div className="dropdown">
+                <button
+                  className="btn border-0 dropdown-toggle d-flex align-items-center gap-2 p-0"
+                  type="button"
+                  data-bs-toggle="dropdown"
+                  style={{ background: "none" }}
+                >
+                  <img
+                    src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=4f46e5&color=fff`}
+                    alt="Profile"
+                    style={{ width: "34px", height: "34px", borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(129,140,248,0.5)" }}
+                  />
+                  <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#e5e7eb" }}>
+                    {user.name.split(" ")[0]}
+                  </span>
+                </button>
+                <ul className="dropdown-menu dropdown-menu-end shadow" style={{ border: "none", borderRadius: "12px", padding: "8px", minWidth: "200px" }}>
+                  <li className="px-3 py-2">
+                    <strong style={{ fontSize: "0.9rem" }}>{user.name}</strong><br />
+                    <small className="text-muted">{user.email}</small>
+                  </li>
+                  <li><hr className="dropdown-divider" /></li>
+                  <li>
+                    <button className="dropdown-item text-danger" style={{ borderRadius: "8px" }} onClick={onLogout}>
+                      🚪 Logout
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            ) : (
+              <Link to="/login" style={{
+                background: "#4f46e5", color: "#fff",
+                padding: "8px 20px", borderRadius: "999px",
+                textDecoration: "none", fontWeight: 600, fontSize: "0.85rem",
+              }}>
+                Sign In
+              </Link>
+            )}
+          </div>
+        )}
+
+        {/* MOBILE right side — only renders on mobile */}
+        {isMobile && (
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            {user && (
+              <img
+                src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=4f46e5&color=fff`}
+                alt="Profile"
+                style={{ width: "32px", height: "32px", borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(129,140,248,0.5)" }}
+              />
+            )}
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
               style={{
-                background: "rgba(255,255,255,0.07)",
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: "999px",
-                padding: "7px 18px",
-                fontSize: "0.85rem",
-                width: "210px",
-                transition: "all 0.2s",
+                background: "none",
+                border: "1px solid rgba(255,255,255,0.2)",
+                borderRadius: "8px",
+                padding: "6px 10px",
+                cursor: "pointer",
+                color: "#f9fafb",
+                fontSize: "1.1rem",
               }}
-            />
-          </form>
-
-          {user ? (
-            <div className="dropdown">
-              <button
-                className="btn border-0 dropdown-toggle d-flex align-items-center gap-2 p-0"
-                type="button"
-                data-bs-toggle="dropdown"
-                style={{ background: "none" }}
-              >
-                <img
-                  src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=4f46e5&color=fff`}
-                  alt="Profile"
-                  style={{ width: "34px", height: "34px", borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(129,140,248,0.5)" }}
-                />
-                <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#e5e7eb" }}>
-                  {user.name.split(" ")[0]}
-                </span>
-              </button>
-              <ul className="dropdown-menu dropdown-menu-end shadow" style={{ border: "none", borderRadius: "12px", padding: "8px", minWidth: "200px" }}>
-                <li className="px-3 py-2">
-                  <strong style={{ fontSize: "0.9rem" }}>{user.name}</strong><br />
-                  <small className="text-muted">{user.email}</small>
-                </li>
-                <li><hr className="dropdown-divider" /></li>
-                <li>
-                  <button className="dropdown-item text-danger" style={{ borderRadius: "8px" }} onClick={onLogout}>
-                    🚪 Logout
-                  </button>
-                </li>
-              </ul>
-            </div>
-          ) : (
-            <Link to="/login" style={{
-              background: "#4f46e5", color: "#fff",
-              padding: "8px 20px", borderRadius: "999px",
-              textDecoration: "none", fontWeight: 600, fontSize: "0.85rem",
-            }}>
-              Sign In
-            </Link>
-          )}
-        </div>
-
-        {/* Mobile: avatar + hamburger */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          {user && (
-            <img
-              src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=4f46e5&color=fff`}
-              alt="Profile"
-              style={{ width: "32px", height: "32px", borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(129,140,248,0.5)" }}
-            />
-          )}
-          <button
-            className="tw-hamburger"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Toggle menu"
-          >
-            {menuOpen ? "✕" : "☰"}
-          </button>
-        </div>
+            >
+              {menuOpen ? "✕" : "☰"}
+            </button>
+          </div>
+        )}
       </nav>
 
       {/* Mobile dropdown menu */}
-      {menuOpen && (
-        <div className="tw-mobile-menu">
+      {isMobile && menuOpen && (
+        <div style={{
+          background: "#16213e",
+          borderBottom: "1px solid rgba(255,255,255,0.07)",
+          padding: "12px 20px 20px",
+        }}>
           {/* Search */}
           <form onSubmit={handleSearch} style={{ marginBottom: "14px" }}>
             <input
@@ -188,7 +207,7 @@ const Navbar = ({ user, onLogout }) => {
               to="/login"
               onClick={() => setMenuOpen(false)}
               style={{
-                display: "block", width: "100%", padding: "11px",
+                display: "block", padding: "11px",
                 background: "#4f46e5", color: "#fff", borderRadius: "10px",
                 textDecoration: "none", fontWeight: 600, textAlign: "center",
                 fontSize: "0.9rem",
