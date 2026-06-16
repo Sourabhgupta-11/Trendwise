@@ -1,17 +1,25 @@
 require('dotenv').config();
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const googleTrends = require('google-trends-api');
+const { GoogleGenAI } = require('@google/genai');  // NEW SDK
 const Article = require('../models/Article');
-const db= require('../db');
+const db = require('../db');
 const axios = require('axios');
 
-// Gemini API setup
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+// NEW SDK init
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // Generate slug from title
 const generateSlug = (title) => {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+};
+
+const assignCategory = (title) => {
+  const t = title.toLowerCase();
+  if (/tech|ai|software|cyber|app|digital|startup|space|robot/.test(t)) return 'Tech';
+  if (/cricket|ipl|football|sport|match|tournament|olympic|fifa|player|team/.test(t)) return 'Sports';
+  if (/election|modi|government|parliament|minister|policy|party|vote|political/.test(t)) return 'Politics';
+  if (/film|movie|bollywood|actor|music|celeb|ott|series|award/.test(t)) return 'Entertainment';
+  if (/market|economy|gdp|stock|rupee|trade|budget|business|company|inflation/.test(t)) return 'Business';
+  return 'General';
 };
 
 // Here we fetch trending topics using google-trends-api
@@ -33,21 +41,18 @@ Topic 10
 `;
 
   try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+    const text = response.text;
     const lines = text
       .split('\n')
       .map(line => line.trim())
       .filter(Boolean);
-
-    return lines.slice(0, 10).map(title => ({
-      title,
-      traffic: 'N/A'
-    }));
+    return lines.slice(0, 10).map(title => ({ title, traffic: 'N/A' }));
   } catch (err) {
-    console.error('❌ Gemini failed to fetch trending topics:', err.message);
+    console.error('Gemini failed to fetch trending topics:', err.message);
     return [];
   }
 };
@@ -99,7 +104,7 @@ const fetchRelatedMedia = async (topic) => {
 
 //Here we are Generating article using Gemini API
 const generateArticle = async (topic, media) => {
-const prompt = `
+  const prompt = `
 You're an expert blog writer.
 
 Write a blog article titled "${topic}" with these rules:
@@ -112,13 +117,14 @@ Do NOT include full <html>, <head>, or <body> tags.
 Do NOT wrap output in \`\`\` or markdown code block.
 Return only plain HTML tags and content.
 `;
-
   try {
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+    return response.text;
   } catch (error) {
-    console.error('❌ Gemini error generating article:', error.message);
+    console.error('Gemini error generating article:', error.message);
     return null;
   }
 };
@@ -153,7 +159,8 @@ const runContentBot = async () => {
         slug,
         meta,
         content,
-        media
+        media,
+        category: assignCategory(title),
       });
 
       await newArticle.save();

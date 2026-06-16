@@ -1,88 +1,133 @@
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import axios from 'axios';
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import axios from "axios";
 
-const ArticleDetail = () => {
+const ArticleDetail = ({ user }) => {
   const { slug } = useParams();
   const [article, setArticle] = useState(null);
 
   axios.defaults.baseURL = process.env.REACT_APP_API_URL;
-  axios.defaults.withCredentials = true; 
+  axios.defaults.withCredentials = true;
 
   useEffect(() => {
     const fetchArticle = async () => {
       try {
         const res = await axios.get(`/api/article/${slug}`);
         setArticle(res.data);
-
-        document.title = res.data.title;
+        document.title = res.data.title + " | TrendWise";
         const metaTag = document.querySelector("meta[name='description']");
         if (metaTag) {
-          metaTag.setAttribute('content', res.data.meta);
+          metaTag.setAttribute("content", res.data.meta);
         } else {
-          const newMeta = document.createElement('meta');
-          newMeta.name = 'description';
-          newMeta.content = res.data.meta;
-          document.head.appendChild(newMeta);
+          const m = document.createElement("meta");
+          m.name = "description";
+          m.content = res.data.meta;
+          document.head.appendChild(m);
         }
       } catch (err) {
-        console.error('Error fetching article:', err.message);
+        console.error("Error fetching article:", err.message);
       }
     };
-
     fetchArticle();
   }, [slug]);
 
   if (!article) {
-    return <div className="container mt-5">Loading...</div>;
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "2rem", marginBottom: "12px" }}>⏳</div>
+          <p style={{ color: "#9ca3af" }}>Loading article...</p>
+        </div>
+      </div>
+    );
   }
 
+  const formattedDate = new Date(article.createdAt).toLocaleDateString("en-IN", {
+    day: "numeric", month: "long", year: "numeric",
+  });
+
   return (
-    <div className="container py-5">
-      <a href="/" style={{ color: '#4f46e5', textDecoration: 'none', fontWeight: 600, display: 'inline-block', marginBottom: '24px' }}>
-        ← Back to Home
-      </a>
-      {article.media && article.media[0] && (
-        <div className="mb-4 text-center">
+    <div style={{ background: "#f9fafb", minHeight: "100vh" }}>
+      {/* Hero image */}
+      {article.media?.[0] && (
+        <div style={{ width: "100%", height: "420px", overflow: "hidden", position: "relative" }}>
           <img
             src={article.media[0]}
             alt={article.title}
-            className="img-fluid rounded shadow"
-            style={{ maxHeight: '400px', objectFit: 'cover', width: '100%' }}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            onError={(e) => { e.target.src = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=1200&q=80"; }}
           />
+          <div style={{
+            position: "absolute", inset: 0,
+            background: "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.7) 100%)",
+          }} />
         </div>
       )}
 
-      {/* Title & Meta */}
-      <div className="text-center mb-4">
-        <h1 className="fw-bold">{article.title}</h1>
-        <p className="text-muted">{article.meta}</p>
-        <hr className="w-25 mx-auto" />
-      </div>
+      {/* Content */}
+      <div style={{ maxWidth: "780px", margin: "0 auto", padding: "40px 24px 80px" }}>
 
-      {/* Article Content */}
-      <div style={{ maxWidth: '780px', margin: '0 auto' }}>
-        <div className="article-body px-2 px-md-4"
-          style={{ lineHeight: '2', fontSize: '1.1rem', color: '#1f2937' }}
-          dangerouslySetInnerHTML={{ __html: article.content }}
-        />
+        {/* Back link */}
+        <a href="/" style={{
+          display: "inline-flex", alignItems: "center", gap: "6px",
+          color: "#4f46e5", textDecoration: "none", fontWeight: 600,
+          fontSize: "0.9rem", marginBottom: "28px",
+        }}>
+          ← Back to Home
+        </a>
 
-
-          {/* Video Embed */}
-          {article.media && article.media[1] && (
-            <div className="mt-5">
-              <h5 className="mb-3">Watch Related Video</h5>
-              <div className="ratio ratio-16x9 shadow rounded overflow-hidden">
-                <iframe
-                  src={article.media[1]}
-                  title="Embedded video"
-                  allowFullScreen
-                />
-              </div>
-            </div>
-          )}
+        {/* Title block */}
+        <div style={{
+          background: "#fff", borderRadius: "16px",
+          padding: "32px", marginBottom: "28px",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+        }}>
+          <h1 style={{ fontWeight: 800, fontSize: "clamp(1.5rem, 4vw, 2.2rem)", color: "#111827", lineHeight: "1.3", marginBottom: "14px" }}>
+            {article.title}
+          </h1>
+          <p style={{ color: "#6b7280", fontSize: "1rem", lineHeight: "1.6", marginBottom: "16px" }}>
+            {article.meta}
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: "6px",
+              fontSize: "0.8rem", color: "#6ee7b7",
+              background: "rgba(110,231,183,0.12)", border: "1px solid rgba(110,231,183,0.3)",
+              borderRadius: "999px", padding: "3px 12px", fontWeight: 600,
+            }}>
+              🤖 AI Generated
+            </span>
+            <span style={{ fontSize: "0.82rem", color: "#9ca3af" }}>
+              🕒 {formattedDate}
+            </span>
+          </div>
         </div>
+
+        {/* Article body */}
+        <div style={{
+          background: "#fff", borderRadius: "16px",
+          padding: "36px 32px",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+          marginBottom: "32px",
+        }}>
+          <div
+            className="article-body"
+            style={{ lineHeight: "1.95", fontSize: "1.05rem", color: "#1f2937" }}
+            dangerouslySetInnerHTML={{ __html: article.content }}
+          />
+        </div>
+
+        {/* Video */}
+        {article.media?.[1] && (
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", boxShadow: "0 4px 20px rgba(0,0,0,0.06)" }}>
+            <h5 style={{ fontWeight: 700, color: "#111827", marginBottom: "16px" }}>📺 Related Video</h5>
+            <div className="ratio ratio-16x9" style={{ borderRadius: "12px", overflow: "hidden" }}>
+              <iframe src={article.media[1]} title="Related video" allowFullScreen />
+            </div>
+          </div>
+        )}
       </div>
+    </div>
   );
 };
 

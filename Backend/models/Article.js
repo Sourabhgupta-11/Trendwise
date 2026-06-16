@@ -6,6 +6,7 @@ const articleSchema = new mongoose.Schema({
   meta: { type: String },
   content: { type: String },
   media: [String], 
+  category: { type: String, default: 'General' },
   createdAt: { type: Date, default: Date.now },
 });
 
