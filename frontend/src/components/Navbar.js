@@ -4,19 +4,19 @@ import { Link } from "react-router-dom";
 
 const Navbar = ({ user, onLogout }) => {
   return (
-    <nav className="navbar navbar-expand-lg navbar-light bg-white shadow-sm px-4">
-      <Link className="navbar-brand fw-bold" to="/">
+    <nav className="navbar navbar-expand-lg navbar-dark px-4"
+      style={{ background: '#1a1a2e', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <Link className="navbar-brand fw-bold" to="/" style={{ color: '#818cf8', fontSize: '1.3rem' }}>
         🧠 TrendWise
       </Link>
 
       <div className="ms-auto d-flex align-items-center">
         {/* Search bar (optional) */}
         <form className="d-none d-md-flex me-3">
-          <input
-            type="search"
-            className="form-control"
+          <input type="search" className="form-control"
             placeholder="Search articles..."
             name="search"
+            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff', borderRadius: '999px', padding: '8px 16px' }}
           />
         </form>
 

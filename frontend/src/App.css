@@ -36,3 +36,27 @@
     transform: rotate(360deg);
   }
 }
+
+/* Better article body typography */
+.article-body h1, .article-body h2, .article-body h3 {
+  color: #111827;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.article-body p {
+  color: #374151;
+  margin-bottom: 1.2rem;
+}
+
+.article-body img {
+  max-width: 100%;
+  border-radius: 12px;
+  margin: 16px 0;
+}
+
+/* Smooth card hover */
+.card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease !important;
+}

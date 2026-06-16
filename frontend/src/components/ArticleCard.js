@@ -8,7 +8,13 @@ const ArticleCard = ({ article, user }) => {
     <>
       <div
         className="card h-100 border-0 shadow-sm"
-        style={{ transition: "transform 0.3s", borderRadius: "12px" }}
+        style={{
+          transition: 'all 0.3s ease',
+          borderRadius: '16px',
+          overflow: 'hidden',
+          boxShadow: '0 4px 15px rgba(0,0,0,0.08)',
+          background: '#ffffff'
+        }}
         onMouseEnter={(e) => {
           e.currentTarget.style.transform = "translateY(-5px)";
           e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.15)";
@@ -32,6 +38,11 @@ const ArticleCard = ({ article, user }) => {
         </div>
         <div className="card-body d-flex flex-column">
           <h5 className="card-title fw-semibold">{article.title}</h5>
+          <div className="d-flex align-items-center gap-2 mb-2">
+            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+              🕒 {new Date(article.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+            </span>
+          </div>
           <p className="card-text text-muted small">
             {article.meta.length > 100
               ? article.meta.slice(0, 100) + "..."

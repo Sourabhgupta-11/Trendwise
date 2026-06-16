@@ -39,6 +39,9 @@ const ArticleDetail = () => {
 
   return (
     <div className="container py-5">
+      <a href="/" style={{ color: '#4f46e5', textDecoration: 'none', fontWeight: 600, display: 'inline-block', marginBottom: '24px' }}>
+        ← Back to Home
+      </a>
       {article.media && article.media[0] && (
         <div className="mb-4 text-center">
           <img
@@ -58,26 +61,28 @@ const ArticleDetail = () => {
       </div>
 
       {/* Article Content */}
-      <div
-        className="article-body px-2 px-md-4"
-        style={{ lineHeight: '1.8', fontSize: '1.1rem' }}
-        dangerouslySetInnerHTML={{ __html: article.content }}
-      />
+      <div style={{ maxWidth: '780px', margin: '0 auto' }}>
+        <div className="article-body px-2 px-md-4"
+          style={{ lineHeight: '2', fontSize: '1.1rem', color: '#1f2937' }}
+          dangerouslySetInnerHTML={{ __html: article.content }}
+        />
 
-      {/* Video Embed */}
-      {article.media && article.media[1] && (
-        <div className="mt-5">
-          <h5 className="mb-3">Watch Related Video</h5>
-          <div className="ratio ratio-16x9 shadow rounded overflow-hidden">
-            <iframe
-              src={article.media[1]}
-              title="Embedded video"
-              allowFullScreen
-            />
-          </div>
+
+          {/* Video Embed */}
+          {article.media && article.media[1] && (
+            <div className="mt-5">
+              <h5 className="mb-3">Watch Related Video</h5>
+              <div className="ratio ratio-16x9 shadow rounded overflow-hidden">
+                <iframe
+                  src={article.media[1]}
+                  title="Embedded video"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </div>
   );
 };
 
