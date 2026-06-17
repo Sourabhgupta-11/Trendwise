@@ -51,14 +51,20 @@ app.use('/', sitemapRoutes)
 
 app.get('/api/trigger-bot', async (req, res) => {
   const secret = req.headers['x-cron-secret'];
-  if (secret !== process.env.CRON_SECRET) return res.status(401).json({ error: 'Unauthorized' });
-  try {
-    const runContentBot = require('./bot/contentBot');
-    await runContentBot();
-    res.json({ success: true, message: 'Bot ran successfully' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  if (secret !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
   }
+
+  res.json({
+    success: true,
+    message: 'Bot started'
+  });
+
+  const runContentBot = require('./bot/contentBot');
+
+  runContentBot()
+    .then(() => console.log('Bot completed'))
+    .catch(err => console.error('Bot failed:', err));
 });
 
 const PORT = process.env.PORT || 5050;
