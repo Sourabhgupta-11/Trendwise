@@ -11,14 +11,12 @@ axios.defaults.baseURL        = process.env.REACT_APP_API_URL;
 axios.defaults.withCredentials = true;
 axios.defaults.timeout         = 10000;
 
-// Remove the HTML splash screen once React has painted
 const removeSplash = () => {
   const el = document.getElementById("tw-splash");
   if (el) { el.classList.add("hide"); setTimeout(() => el.remove(), 450); }
 };
 
 const AppWrapper = () => {
-  // Seed user from sessionStorage — renders instantly on repeat visits
   const [user,       setUser]       = useState(() => {
     try { return JSON.parse(sessionStorage.getItem("tw_user")); } catch { return null; }
   });
@@ -28,12 +26,10 @@ const AppWrapper = () => {
   const location  = useLocation();
   const splashRef = useRef(false);
 
-  // Remove splash as soon as component mounts (user may already be cached)
   useEffect(() => {
     if (!splashRef.current) { splashRef.current = true; removeSplash(); }
   }, []);
 
-  // Silently verify session in background — never blocks render
   useEffect(() => {
     if (location.pathname === "/login") { setAuthReady(true); return; }
     axios.get("/api/auth/me")
@@ -41,9 +37,8 @@ const AppWrapper = () => {
       .catch(()  => { setUser(null); sessionStorage.removeItem("tw_user"); })
       .finally(() => setAuthReady(true));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);   // only once on mount — not on every route change
+  }, []);   
 
-  // Apply dark mode to <body>
   useEffect(() => {
     document.body.setAttribute("data-theme", darkMode ? "dark" : "light");
     document.body.style.background = darkMode ? "#0f172a" : "";
@@ -57,10 +52,6 @@ const AppWrapper = () => {
     setUser(null); setLoggingOut(false);
     window.location.href = "/login";
   };
-
-  // While auth hasn't resolved AND we have no cached user, show nothing extra
-  // (splash is still visible from HTML). Once we have either user or authReady → render.
-  const canRender = user !== undefined; // always true since useState resolves sync
 
   return (
     <>

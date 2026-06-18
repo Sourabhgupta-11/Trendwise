@@ -20,13 +20,12 @@ const HomePage = ({ user, darkMode }) => {
   const [articles, setArticles] = useState([]);
   const [filter,   setFilter]   = useState("All");
   const [loading,  setLoading]  = useState(true);
-  const [view,     setView]     = useState("grid"); // "grid" | "list"
+  const [view,     setView]     = useState("grid"); 
   const location = useLocation();
   const query      = new URLSearchParams(location.search).get("search");
   const bookmarks  = new URLSearchParams(location.search).get("bookmarks");
 
   const bg   = darkMode ? "#0f172a" : "linear-gradient(160deg,#f0f4ff,#f8f9ff,#eef2ff)";
-  const card = darkMode ? "#1e293b" : "#fff";
 
   useEffect(() => {
     let cancelled = false;
