@@ -1,111 +1,41 @@
-.App {
-  text-align: center;
+/* ── Global resets ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
-}
-
-.App-link {
-  color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Better article body typography */
-.article-body h1, .article-body h2, .article-body h3 {
-  color: #111827;
-  font-weight: 700;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-}
-
-.article-body p {
-  color: #374151;
-  margin-bottom: 1.2rem;
-}
-
-.article-body img {
-  max-width: 100%;
-  border-radius: 12px;
-  margin: 16px 0;
-}
-
-/* Smooth card hover */
-.card {
-  transition: transform 0.25s ease, box-shadow 0.25s ease !important;
-}
-
-/* Article body typography */
-.article-body h1,
-.article-body h2,
-.article-body h3 {
-  color: #111827;
-  font-weight: 700;
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-  line-height: 1.3;
-}
-
-.article-body h2 { font-size: 1.45rem; }
-.article-body h3 { font-size: 1.2rem; }
-
-.article-body p {
-  color: #374151;
-  margin-bottom: 1.3rem;
-  line-height: 1.95;
-}
-
-.article-body img {
-  max-width: 100%;
-  border-radius: 12px;
-  margin: 20px 0;
-}
-
-.article-body a {
-  color: #4f46e5;
-  text-decoration: underline;
-}
-
-.article-body ul,
-.article-body ol {
-  padding-left: 1.6rem;
-  margin-bottom: 1.3rem;
-  color: #374151;
-}
-
-.article-body li {
-  margin-bottom: 0.5rem;
-  line-height: 1.7;
-}
-
-/* Smooth scrollbar */
+/* ── Smooth scrollbar ── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #f1f5f9; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ── Mobile: no horizontal overflow ── */
+html, body { overflow-x: hidden; max-width: 100vw; }
+
+/* ── Article body typography (used in ArticleDetail) ── */
+.tw-article-body { line-height: 1.9; font-size: 1.05rem; color: #1f2937; }
+.tw-article-body h1, .tw-article-body h2, .tw-article-body h3 {
+  color: #111827; font-weight: 700; margin-top: 1.8rem; margin-bottom: .8rem; line-height: 1.3;
+}
+.tw-article-body h2 { font-size: 1.4rem; }
+.tw-article-body h3 { font-size: 1.15rem; }
+.tw-article-body p  { margin-bottom: 1.3rem; }
+.tw-article-body img { max-width: 100%; border-radius: 12px; margin: 16px 0; }
+.tw-article-body a  { color: #4f46e5; }
+.tw-article-body ul, .tw-article-body ol { padding-left: 1.5rem; margin-bottom: 1.2rem; }
+.tw-article-body li { margin-bottom: .5rem; line-height: 1.7; }
+.tw-article-body blockquote {
+  border-left: 4px solid #4f46e5; margin: 1.5rem 0;
+  padding: .8rem 1.2rem; background: #f5f3ff;
+  border-radius: 0 10px 10px 0; font-style: italic; color: #4b5563;
+}
+
+/* ── Shimmer animation for skeleton ── */
+@keyframes tw-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
