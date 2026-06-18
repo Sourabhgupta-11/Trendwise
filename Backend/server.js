@@ -1,21 +1,16 @@
-const express = require('express');
-const cors = require('cors');
-const session = require('express-session');
+const express    = require('express');
+const cors       = require('cors');
+const session    = require('express-session');
 const MongoStore = require('connect-mongo');
-const passport = require('passport');
+const passport   = require('passport');
 require('dotenv').config();
 const db = require('./db');
 require('./botScheduler.js');
 
 const app = express();
-
 app.set('trust proxy', 1);
 
-app.use(cors({
-  origin: 'https://trendwise-swart.vercel.app',
-  credentials: true
-}));
-
+app.use(cors({ origin: 'https://trendwise-swart.vercel.app', credentials: true }));
 app.use(express.json());
 app.use(express.static('public'));
 
@@ -23,54 +18,36 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URL,
-    collectionName: 'sessions'
-  }),
-  cookie: {
-    httpOnly: true,
-    secure: true,
-    sameSite: 'none'
-  }
+  store: MongoStore.create({ mongoUrl: process.env.MONGODB_URL, collectionName: 'sessions' }),
+  cookie: { httpOnly: true, secure: true, sameSite: 'none' }
 }));
 app.use(passport.initialize());
 app.use(passport.session());
 
 // Routes
-const articleRoutes = require('./routes/article');
-const commentRoutes = require('./routes/comment');
-const authRoutes = require('./routes/auth');
-const adminRoutes=require("./routes/admin.js")
-const sitemapRoutes = require('./routes/sitemap');
+app.use('/api/article',  require('./routes/article'));
+app.use('/api/comment',  require('./routes/comment'));
+app.use('/api/auth',     require('./routes/auth'));
+app.use('/api/admin',    require('./routes/admin'));
+app.use('/',             require('./routes/sitemap'));
 
-app.use('/api/article', articleRoutes);
-app.use('/api/comment', commentRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/', sitemapRoutes)
+// ── Keep-alive ping (cron-job 1 hits this 2 min before bot)
+app.get('/api/ping', (_req, res) => res.json({ status: 'awake', time: new Date() }));
 
-app.get('/api/ping', (req, res) => {
-  res.json({ status: 'awake', time: new Date().toISOString() });
-});
-
+// ── Bot trigger — responds immediately, runs in background
 app.get('/api/trigger-bot', async (req, res) => {
-  const secret = req.headers['x-cron-secret'];
-  if (secret !== process.env.CRON_SECRET) {
+  if (req.headers['x-cron-secret'] !== process.env.CRON_SECRET)
     return res.status(401).json({ error: 'Unauthorized' });
-  }
 
-  res.status(202).json({ success: true, message: 'Bot started in background' });
+  res.status(202).json({ success: true, message: 'Bot started' });
 
   try {
-    const runContentBot = require('./bot/contentBot');
-    await runContentBot();
-    console.log('✅ Background bot run complete');
+    await require('./bot/contentBot')();
+    console.log('✅ Triggered bot run complete');
   } catch (err) {
-    console.error('❌ Background bot error:', err.message);
+    console.error('❌ Triggered bot error:', err.message);
   }
 });
 
 const PORT = process.env.PORT || 5050;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server on port ${PORT}`));
