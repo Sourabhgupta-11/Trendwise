@@ -4,7 +4,7 @@ const googleTrends = require('google-trends-api');
 const Article = require('../models/Article');
 const db = require('../db');
 const axios = require('axios');
-
+const RSSParser = require('rss-parser');
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const generateSlug = (title) => {
@@ -23,39 +23,71 @@ const assignCategory = (title) => {
   return 'General';
 };
 
-// Fetch REAL trending topics from Google Trends for India
 const fetchTrendingTopics = async () => {
+  // Google News RSS — works reliably on all cloud servers, no scraping
+  const RSS_FEEDS = [
+    'https://news.google.com/rss/headlines/section/geo/IN?hl=en-IN&gl=IN&ceid=IN:en',
+    'https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRFZxYUdjU0FtVnVHZ0pKVGlnQVAB?hl=en-IN&gl=IN&ceid=IN:en',
+  ];
+
   try {
-    const results = await googleTrends.dailyTrends({ geo: 'IN' });
-    const parsed = JSON.parse(results);
-    const trendingStories = parsed?.default?.trendingSearchesDays?.[0]?.trendingSearches || [];
+    const parser = new RSSParser();
+    let allItems = [];
 
-    // Extract top 12 trending topics with their titles
-    const topics = trendingStories.slice(0, 12).map(story => ({
-      title: story.title?.query || story.title,
-      traffic: story.formattedTraffic || 'N/A',
-    }));
+    for (const url of RSS_FEEDS) {
+      try {
+        const feed = await parser.parseURL(url);
+        allItems = allItems.concat(feed.items || []);
+      } catch (e) {
+        console.log(`⚠️ RSS feed failed: ${url}`);
+      }
+    }
 
-    console.log(`✅ Fetched ${topics.length} real trending topics from Google Trends`);
+    if (allItems.length === 0) throw new Error('All RSS feeds failed');
+
+    // Deduplicate by title, take top 12
+    const seen = new Set();
+    const topics = [];
+    for (const item of allItems) {
+      const title = item.title
+        ?.replace(/\s*-\s*[^-]+$/, '')  // remove " - Source Name" suffix
+        ?.trim();
+      if (title && !seen.has(title) && title.length > 10) {
+        seen.add(title);
+        topics.push({ title, traffic: 'N/A' });
+        if (topics.length >= 12) break;
+      }
+    }
+
+    console.log(`✅ Fetched ${topics.length} topics from Google News RSS`);
     return topics;
-  } catch (err) {
-    console.error('❌ Google Trends failed, falling back to Gemini topics:', err.message);
 
-    // Fallback: ask Gemini for trending topics if Google Trends fails
-    try {
-      const today = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `List exactly 10 highly trending news topics in India as of ${today}. 
+  } catch (err) {
+    console.error('❌ RSS fetch failed, falling back to Gemini topics:', err.message);
+
+    // Gemini fallback with retry on 503
+    const models = ['gemini-2.0-flash', 'gemini-1.5-flash-latest'];
+    const today = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    for (const model of models) {
+      try {
+        console.log(`🔄 Trying Gemini model: ${model}`);
+        const response = await ai.models.generateContent({
+          model,
+          contents: `List exactly 10 highly trending news topics in India as of ${today}.
 Cover a mix of: politics, cricket/sports, technology, entertainment, business, education.
 Only list topic titles. No numbering, no explanation. One per line.`,
-      });
-      const lines = response.text.split('\n').map(l => l.trim()).filter(Boolean);
-      return lines.slice(0, 10).map(title => ({ title, traffic: 'N/A' }));
-    } catch (fallbackErr) {
-      console.error('❌ Gemini fallback also failed:', fallbackErr.message);
-      return [];
+        });
+        const lines = response.text.split('\n').map(l => l.trim()).filter(Boolean);
+        console.log(`✅ Gemini fallback succeeded with ${model}`);
+        return lines.slice(0, 10).map(title => ({ title, traffic: 'N/A' }));
+      } catch (geminiErr) {
+        console.error(`❌ ${model} failed:`, geminiErr.message);
+      }
     }
+
+    console.error('❌ All topic sources failed');
+    return [];
   }
 };
 
@@ -104,16 +136,35 @@ Do NOT include <html>, <head>, or <body> tags.
 Do NOT wrap in markdown code blocks.
 Return only plain HTML.`;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    });
-    return response.text;
-  } catch (error) {
-    console.error('❌ Gemini article generation error:', error.message);
-    return null;
+  // Try models in order, with a delay on 503
+  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-latest'];
+
+  for (const model of models) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const response = await ai.models.generateContent({ model, contents: prompt });
+        return response.text;
+      } catch (err) {
+        const is503 = err.message?.includes('503') || err.message?.includes('UNAVAILABLE');
+        const is404 = err.message?.includes('404') || err.message?.includes('not found');
+
+        if (is404) {
+          console.log(`⚠️ Model ${model} not available, trying next...`);
+          break; // try next model immediately
+        }
+        if (is503 && attempt === 1) {
+          console.log(`⏳ ${model} overloaded, waiting 15s before retry...`);
+          await new Promise(r => setTimeout(r, 15000));
+          continue; // retry same model
+        }
+        console.error(`❌ ${model} attempt ${attempt} failed:`, err.message);
+        break; // try next model
+      }
+    }
   }
+
+  console.error(`❌ All models failed for: ${topic}`);
+  return null;
 };
 
 const runContentBot = async () => {
