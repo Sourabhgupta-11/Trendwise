@@ -49,22 +49,25 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/', sitemapRoutes)
 
+app.get('/api/ping', (req, res) => {
+  res.json({ status: 'awake', time: new Date().toISOString() });
+});
+
 app.get('/api/trigger-bot', async (req, res) => {
   const secret = req.headers['x-cron-secret'];
   if (secret !== process.env.CRON_SECRET) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  res.json({
-    success: true,
-    message: 'Bot started'
-  });
+  res.status(202).json({ success: true, message: 'Bot started in background' });
 
-  const runContentBot = require('./bot/contentBot');
-
-  runContentBot()
-    .then(() => console.log('Bot completed'))
-    .catch(err => console.error('Bot failed:', err));
+  try {
+    const runContentBot = require('./bot/contentBot');
+    await runContentBot();
+    console.log('✅ Background bot run complete');
+  } catch (err) {
+    console.error('❌ Background bot error:', err.message);
+  }
 });
 
 const PORT = process.env.PORT || 5050;
