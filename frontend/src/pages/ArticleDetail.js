@@ -34,14 +34,17 @@ const ArticleDetail = ({ user, darkMode }) => {
         let m = document.querySelector("meta[name='description']");
         if (!m) { m = document.createElement("meta"); m.name = "description"; document.head.appendChild(m); }
         m.content = res.data.meta || "";
-        // Check bookmark
-        try {
-          const ids = JSON.parse(localStorage.getItem("tw_bookmarks") || "[]");
-          setBookmarked(ids.includes(res.data._id));
-        } catch {}
       })
       .catch(err => console.error(err.message));
   }, [slug]);
+
+  useEffect(() => {
+    if (!article?._id) return;
+    try {
+      const ids = JSON.parse(localStorage.getItem(`tw_bookmarks_${user?._id || "guest"}`) || "[]");
+      setBookmarked(ids.includes(article._id));
+    } catch {}
+  }, [article?._id, user?._id]);
 
   // Fetch related articles from sessionStorage cache
   useEffect(() => {
@@ -73,9 +76,9 @@ const ArticleDetail = ({ user, darkMode }) => {
   const toggleBookmark = () => {
     if (!article) return;
     try {
-      const ids  = JSON.parse(localStorage.getItem("tw_bookmarks") || "[]");
+      const ids  = JSON.parse(localStorage.getItem(`tw_bookmarks_${user?._id || "guest"}`) || "[]");
       const next = ids.includes(article._id) ? ids.filter(i => i !== article._id) : [...ids, article._id];
-      localStorage.setItem("tw_bookmarks", JSON.stringify(next));
+      localStorage.getItem(`tw_bookmarks_${user?._id || "guest"}`, JSON.stringify(next));
       setBookmarked(!bookmarked);
       window.dispatchEvent(new Event("tw_bookmarks_changed"));
     } catch {}

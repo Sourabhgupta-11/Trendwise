@@ -6,7 +6,8 @@ const CommentModal = ({ articleId, user, onClose, isOpen, darkMode }) => {
   const [input,    setInput]    = useState("");
   const [posting,  setPosting]  = useState(false);
   const [loading,  setLoading]  = useState(false);
-  const [likes,    setLikes]    = useState({});  // commentId -> bool (liked by current user)
+  const [likes,    setLikes]    = useState({});       // commentId -> liked by me (bool)
+  const [likeCounts, setLikeCounts] = useState({});   // commentId -> total count
 
   const bg      = darkMode ? "#0f172a" : "#fff";
   const surface = darkMode ? "#1e293b" : "#f8fafc";
@@ -26,10 +27,14 @@ const CommentModal = ({ articleId, user, onClose, isOpen, darkMode }) => {
     axios.get(`/api/comment/${articleId}`)
       .then(res => {
         setComments(res.data);
-        // seed likes from localStorage
         try {
-          const stored = JSON.parse(localStorage.getItem("tw_likes") || "{}");
-          setLikes(stored);
+          const storedLiked  = JSON.parse(localStorage.getItem("tw_likes") || "{}");
+          const storedCounts = JSON.parse(localStorage.getItem("tw_like_counts") || "{}");
+          setLikes(storedLiked);
+          // Initialize counts for comments that don't have one yet
+          const next = { ...storedCounts };
+          res.data.forEach(c => { if (!(c._id in next)) next[c._id] = 0; });
+          setLikeCounts(next);
         } catch {}
       })
       .catch(err => console.error("Comments fetch:", err.message))
@@ -41,9 +46,9 @@ const CommentModal = ({ articleId, user, onClose, isOpen, darkMode }) => {
     setPosting(true);
     try {
       const res = await axios.post("/api/comment", { articleId, text: input.trim() });
-      // Populate userId manually since backend may not return populated
       const newC = { ...res.data, userId: { name: user.name, avatar: user.avatar, _id: user._id } };
       setComments(prev => [...prev, newC]);
+      setLikeCounts(prev => ({ ...prev, [newC._id]: 0 }));
       setInput("");
     } catch (err) {
       console.error("Post comment:", err.message);
@@ -54,10 +59,19 @@ const CommentModal = ({ articleId, user, onClose, isOpen, darkMode }) => {
 
   const toggleLike = (commentId) => {
     try {
-      const stored = JSON.parse(localStorage.getItem("tw_likes") || "{}");
-      const next   = { ...stored, [commentId]: !stored[commentId] };
-      localStorage.setItem("tw_likes", JSON.stringify(next));
-      setLikes(next);
+      const storedLiked  = JSON.parse(localStorage.getItem("tw_likes") || "{}");
+      const storedCounts = JSON.parse(localStorage.getItem("tw_like_counts") || "{}");
+
+      const isLiked = !storedLiked[commentId];
+      const nextLiked  = { ...storedLiked, [commentId]: isLiked };
+      const currentCount = storedCounts[commentId] ?? 0;
+      const nextCount = isLiked ? currentCount + 1 : Math.max(0, currentCount - 1);
+      const nextCounts = { ...storedCounts, [commentId]: nextCount };
+
+      localStorage.setItem("tw_likes", JSON.stringify(nextLiked));
+      localStorage.setItem("tw_like_counts", JSON.stringify(nextCounts));
+      setLikes(nextLiked);
+      setLikeCounts(nextCounts);
     } catch {}
   };
 
@@ -102,7 +116,6 @@ const CommentModal = ({ articleId, user, onClose, isOpen, darkMode }) => {
         {/* ── Comment list ── */}
         <div style={{overflowY:"auto",flexGrow:1,padding:"16px 24px"}}>
           {loading ? (
-            // Skeleton
             Array.from({length:3}).map((_,i) => (
               <div key={i} style={{display:"flex",gap:12,marginBottom:20}}>
                 <div style={{width:40,height:40,borderRadius:"50%",background:darkMode?"#273548":"#e5e7eb",flexShrink:0}}/>
@@ -121,10 +134,10 @@ const CommentModal = ({ articleId, user, onClose, isOpen, darkMode }) => {
           ) : (
             comments.map((c, idx) => {
               const isLiked = likes[c._id];
+              const count   = likeCounts[c._id] ?? 0;
               const initials = (c.userId?.name || "U").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
               return (
                 <div key={c._id || idx} style={{display:"flex",gap:12,marginBottom:20,animation:"tw-fadein .3s ease"}}>
-                  {/* Avatar */}
                   {c.userId?.avatar ? (
                     <img src={c.userId.avatar} alt={c.userId.name}
                       style={{width:40,height:40,borderRadius:"50%",objectFit:"cover",flexShrink:0,border:`2px solid ${darkMode?"#334155":"#e5e7eb"}`}}/>
@@ -135,23 +148,26 @@ const CommentModal = ({ articleId, user, onClose, isOpen, darkMode }) => {
                   )}
 
                   <div style={{flexGrow:1,minWidth:0}}>
-                    {/* Name + time */}
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,flexWrap:"wrap"}}>
                       <span style={{fontWeight:700,fontSize:"0.88rem",color:text}}>{c.userId?.name||"Anonymous"}</span>
                       <span style={{fontSize:"0.72rem",color:muted,background:darkMode?"#1e293b":"#f3f4f6",padding:"2px 8px",borderRadius:999}}>{timeAgo(c.createdAt)}</span>
                     </div>
 
-                    {/* Bubble */}
                     <div style={{background:bubble,borderRadius:"4px 14px 14px 14px",padding:"10px 14px",fontSize:"0.88rem",color:text,lineHeight:1.55,wordBreak:"break-word"}}>
                       {c.text}
                     </div>
 
-                    {/* Actions */}
                     <div style={{display:"flex",alignItems:"center",gap:12,marginTop:6}}>
                       <button onClick={()=>toggleLike(c._id)}
-                        style={{background:"none",border:"none",cursor:"pointer",fontSize:"0.78rem",color:isLiked?"#4f46e5":muted,fontWeight:600,padding:0,transition:"color .15s",display:"flex",alignItems:"center",gap:4}}
+                        style={{background:"none",border:"none",cursor:"pointer",fontSize:"0.78rem",color:isLiked?"#4f46e5":muted,fontWeight:600,padding:0,transition:"color .15s",display:"flex",alignItems:"center",gap:5}}
                         title={isLiked?"Unlike":"Like"}>
-                        {isLiked ? "👍" : "👍"} <span style={{color:isLiked?"#4f46e5":muted}}>{isLiked?"Liked":"Like"}</span>
+                        <span>👍</span>
+                        <span>{isLiked?"Liked":"Like"}</span>
+                        {count > 0 && (
+                          <span style={{background:darkMode?"#1e293b":"#f3f4f6",color:isLiked?"#4f46e5":muted,padding:"1px 7px",borderRadius:999,fontSize:"0.7rem",fontWeight:700}}>
+                            {count}
+                          </span>
+                        )}
                       </button>
                       <span style={{width:3,height:3,borderRadius:"50%",background:muted,display:"inline-block"}}/>
                       <span style={{fontSize:"0.75rem",color:muted}}>
@@ -170,25 +186,39 @@ const CommentModal = ({ articleId, user, onClose, isOpen, darkMode }) => {
           {user ? (
             <div style={{display:"flex",gap:10,alignItems:"flex-end"}}>
               {user.avatar ? (
-                <img src={user.avatar} alt="you" style={{width:36,height:36,borderRadius:"50%",objectFit:"cover",flexShrink:0,border:`2px solid rgba(79,70,229,.4)`}}/>
+                <img src={user.avatar} alt="you" style={{width:36,height:36,borderRadius:"50%",objectFit:"cover",flexShrink:0,border:"2px solid rgba(79,70,229,.4)"}}/>
               ) : (
                 <div style={{width:36,height:36,borderRadius:"50%",background:"linear-gradient(135deg,#4f46e5,#818cf8)",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:700,fontSize:"0.8rem"}}>
                   {user.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}
                 </div>
               )}
-              <div style={{flexGrow:1,position:"relative"}}>
+
+              {/* Flex row: textarea + button side by side, vertically centered */}
+              <div style={{flexGrow:1,display:"flex",alignItems:"flex-end",gap:8,
+                  border:`1.5px solid ${input.trim()?"#4f46e5":(darkMode?"#334155":"#e5e7eb")}`,
+                  borderRadius:14,background:surface,padding:"6px 8px 6px 14px",transition:"border-color .2s"}}>
                 <textarea
-                  rows={2}
+                  rows={1}
                   value={input}
                   onChange={e=>setInput(e.target.value)}
                   onKeyDown={handleKey}
                   placeholder="Share your thoughts… (Enter to post)"
-                  style={{width:"100%",borderRadius:14,border:`1.5px solid ${input.trim()?"#4f46e5":darkMode?"#334155":"#e5e7eb"}`,padding:"10px 48px 10px 14px",fontSize:"0.88rem",resize:"none",outline:"none",lineHeight:1.5,background:surface,color:text,transition:"border-color .2s",boxSizing:"border-box"}}
-                  onFocus={e=>e.target.style.borderColor="#4f46e5"}
-                  onBlur={e=>e.target.style.borderColor=input.trim()?"#4f46e5":(darkMode?"#334155":"#e5e7eb")}
+                  style={{
+                    flexGrow:1, border:"none", outline:"none", resize:"none",
+                    background:"transparent", color:text,
+                    fontSize:"0.88rem", lineHeight:1.5,
+                    padding:"6px 0", maxHeight:90, overflowY:"auto",
+                  }}
                 />
                 <button onClick={postComment} disabled={!input.trim()||posting}
-                  style={{position:"absolute",bottom:10,right:10,width:32,height:32,borderRadius:999,border:"none",background:input.trim()&&!posting?"#4f46e5":"#e5e7eb",color:input.trim()&&!posting?"#fff":"#9ca3af",cursor:input.trim()&&!posting?"pointer":"default",fontSize:"1rem",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .2s"}}>
+                  style={{
+                    flexShrink:0, width:32, height:32, borderRadius:999, border:"none",
+                    background: input.trim()&&!posting ? "#4f46e5" : (darkMode?"#334155":"#e5e7eb"),
+                    color: input.trim()&&!posting ? "#fff" : "#9ca3af",
+                    cursor: input.trim()&&!posting ? "pointer" : "default",
+                    fontSize:"1rem", display:"flex", alignItems:"center", justifyContent:"center",
+                    transition:"all .2s", marginBottom:2,
+                  }}>
                   {posting ? "…" : "↑"}
                 </button>
               </div>

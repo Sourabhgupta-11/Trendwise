@@ -11,18 +11,19 @@ const Navbar = ({ user, onLogout, darkMode, toggleDark }) => {
   useEffect(() => {
     const onResize = () => { setIsMobile(window.innerWidth < 768); if (window.innerWidth >= 768) setMenuOpen(false); };
     window.addEventListener("resize", onResize);
-    // Bookmark count
-    try { setBookmarks(JSON.parse(localStorage.getItem("tw_bookmarks") || "[]").length); } catch {}
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // Re-read bookmarks whenever storage changes
   useEffect(() => {
-    const onStorage = () => { try { setBookmarks(JSON.parse(localStorage.getItem("tw_bookmarks") || "[]").length); } catch {} };
+    try { setBookmarks(JSON.parse(localStorage.getItem(`tw_bookmarks_${user?._id || "guest"}`) || "[]").length); } catch {}
+  }, [user?._id]);
+
+  useEffect(() => {
+    const onStorage = () => { try { setBookmarks(JSON.parse(localStorage.getItem(`tw_bookmarks_${user?._id || "guest"}`) || "[]").length); } catch {} };
     window.addEventListener("storage", onStorage);
     window.addEventListener("tw_bookmarks_changed", onStorage);
     return () => { window.removeEventListener("storage", onStorage); window.removeEventListener("tw_bookmarks_changed", onStorage); };
-  }, []);
+  }, [user?._id]);
 
   const handleSearch = (e) => {
     e.preventDefault();

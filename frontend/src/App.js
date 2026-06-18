@@ -10,6 +10,7 @@ import axios from "axios";
 axios.defaults.baseURL        = process.env.REACT_APP_API_URL;
 axios.defaults.withCredentials = true;
 axios.defaults.timeout         = 10000;
+const getStorageKey = (base, userId) => userId ? `${base}_${userId}` : base;
 
 const removeSplash = () => {
   const el = document.getElementById("tw-splash");
@@ -38,6 +39,17 @@ const AppWrapper = () => {
       .finally(() => setAuthReady(true));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);   
+
+  useEffect(() => {
+    if (!user?._id) return;
+    const oldKey = "tw_bookmarks";
+    const newKey = getStorageKey("tw_bookmarks", user._id);
+    if (localStorage.getItem(oldKey) && !localStorage.getItem(newKey)) {
+      localStorage.setItem(newKey, localStorage.getItem(oldKey));
+    }
+    localStorage.removeItem(oldKey); 
+  }, [user?._id]);
+
 
   useEffect(() => {
     document.body.setAttribute("data-theme", darkMode ? "dark" : "light");

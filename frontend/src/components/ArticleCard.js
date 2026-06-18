@@ -11,17 +11,17 @@ const ArticleCard = ({ article, user, darkMode }) => {
 
   useEffect(() => {
     try {
-      const ids = JSON.parse(localStorage.getItem("tw_bookmarks") || "[]");
+      const ids = JSON.parse(localStorage.getItem(`tw_bookmarks_${user?._id || "guest"}`) || "[]");
       setBookmarked(ids.includes(article._id));
     } catch {}
-  }, [article._id]);
+  }, [article._id, user?._id]);
 
   const toggleBookmark = (e) => {
     e.preventDefault(); e.stopPropagation();
     try {
-      const ids  = JSON.parse(localStorage.getItem("tw_bookmarks") || "[]");
+      const ids  = JSON.parse(localStorage.getItem(`tw_bookmarks_${user?._id || "guest"}`) || "[]");
       const next = ids.includes(article._id) ? ids.filter(i=>i!==article._id) : [...ids, article._id];
-      localStorage.setItem("tw_bookmarks", JSON.stringify(next));
+      localStorage.getItem(`tw_bookmarks_${user?._id || "guest"}`, JSON.stringify(next));
       setBookmarked(!bookmarked);
       window.dispatchEvent(new Event("tw_bookmarks_changed"));
     } catch {}
@@ -36,6 +36,7 @@ const ArticleCard = ({ article, user, darkMode }) => {
   return (
     <>
       <div style={{borderRadius:16,overflow:"hidden",background:cardBg,height:"100%",display:"flex",flexDirection:"column",
+        border: darkMode ? "1px solid rgba(255,255,255,0.1)" : "none",
         boxShadow: hovered ? "0 16px 40px rgba(79,70,229,.18)" : `0 4px 15px rgba(0,0,0,${darkMode?.14:.07})`,
         transform: hovered ? "translateY(-5px)" : "translateY(0)", transition:"all .3s ease"}}
         onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)}>
