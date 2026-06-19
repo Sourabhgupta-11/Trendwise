@@ -92,40 +92,125 @@ One per line. No numbering.`,
   return [];
 };
 
-/* ─── fetch RELEVANT media (key fix for mismatches) ─────────── */
+/* ─── extract the real subject of a headline (for accurate media) ─── */
 
-const fetchRelatedMedia = async (topic) => {
-  // Build a focused keyword string — remove common stop words that confuse image search
-  const kw = topic.replace(/\b(india|indian|new|big|latest|top|why|how|what|amid|after|over|as|the|and|for|with|in|on|at|of|to)\b/gi, ' ')
-               .replace(/\s+/g, ' ').trim().slice(0, 80);
+const extractEntity = async (topic) => {
+  const prompt = `Analyze this Indian news headline: "${topic}"
+
+Identify:
+1. PRIMARY_ENTITY: the single most important named person, company, or organization in this headline (e.g. "Mukesh Ambani", "Rahul Gandhi", "Reliance Industries", "ISRO"). If no specific named entity exists, put the most concrete named place or event instead. Keep it short (1-4 words), exactly as it would appear on Wikipedia.
+2. SEARCH_KEYWORDS: 3-4 words describing the visual scene/context for a stock photo search (e.g. "businessman smartphone technology office", "cricket stadium celebration", "parliament building India"). Do not repeat the entity name here.
+3. IS_PERSON: true if PRIMARY_ENTITY is a specific named individual, false otherwise.
+
+Respond ONLY in this exact format, nothing else:
+ENTITY: <primary entity>
+KEYWORDS: <search keywords>
+PERSON: <true or false>`;
 
   try {
-    const [imageRes, youtubeRes] = await Promise.all([
-      axios.get('https://api.unsplash.com/search/photos', {
-        params: { query: kw, per_page: 3, orientation: 'landscape', content_filter: 'high' },
-        headers: { Authorization: `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}` },
-        timeout: 8000,
-      }),
-      axios.get('https://www.googleapis.com/youtube/v3/search', {
-        params: {
-          part: 'snippet', q: `${topic} news India 2025`,
-          type: 'video', maxResults: 3,
-          key: process.env.YOUTUBE_API_KEY,
-          regionCode: 'IN', relevanceLanguage: 'en',
-          videoDuration: 'medium',           // 4–20 min — proper news segments
-          order: 'relevance',
-        },
-        timeout: 8000,
-      }),
-    ]);
+    const res = await ai.models.generateContent({ model: 'gemini-2.0-flash', contents: prompt });
+    const text = res.text || '';
+    const entity   = text.match(/ENTITY:\s*(.+)/i)?.[1]?.trim();
+    const keywords = text.match(/KEYWORDS:\s*(.+)/i)?.[1]?.trim();
+    const isPerson = /true/i.test(text.match(/PERSON:\s*(.+)/i)?.[1] || '');
+    return {
+      entity:   entity   || topic.split(' ').slice(0, 3).join(' '),
+      keywords: keywords || topic,
+      isPerson,
+    };
+  } catch (err) {
+    console.log('⚠️ Entity extraction failed, using raw title:', err.message);
+    return { entity: topic.split(' ').slice(0, 3).join(' '), keywords: topic, isPerson: false };
+  }
+};
 
-    // Pick the image with most downloads (most relevant)
-    const images = imageRes.data.results || [];
-    const best   = images.sort((a, b) => (b.downloads || 0) - (a.downloads || 0));
-    const imageUrl = best[0]?.urls?.regular
-      || 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=600';
+/* ─── Wikipedia thumbnail lookup (best for real people/orgs/places) ─── */
 
-    // Pick YouTube video whose title most closely matches topic words
+const fetchWikipediaImage = async (entity) => {
+  try {
+    const res = await axios.get('https://en.wikipedia.org/w/api.php', {
+      params: {
+        action: 'query', generator: 'search', gsrsearch: entity, gsrlimit: 1,
+        prop: 'pageimages', pithumbsize: 800, format: 'json', origin: '*',
+      },
+      timeout: 6000,
+    });
+    const pages = res.data?.query?.pages;
+    if (!pages) return null;
+    const page = Object.values(pages)[0];
+    return page?.thumbnail?.source || null;
+  } catch {
+    return null;
+  }
+};
+
+/* ─── Unsplash search (for context/scene photos, non-person topics) ─── */
+
+const fetchUnsplashImage = async (query, excludeIds = new Set()) => {
+  try {
+    const res = await axios.get('https://api.unsplash.com/search/photos', {
+      params: { query, per_page: 6, orientation: 'landscape', content_filter: 'high' },
+      headers: { Authorization: `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}` },
+      timeout: 8000,
+    });
+    const results = res.data.results || [];
+    // Prefer an image not already used in this run, ranked by relevance (Unsplash already sorts by relevance)
+    const fresh = results.find(img => !excludeIds.has(img.id)) || results[0];
+    return fresh ? { url: fresh.urls.regular, id: fresh.id } : null;
+  } catch {
+    return null;
+  }
+};
+
+/* ─── main media resolver: entity-aware, multi-source, dedup'd ─── */
+
+const fetchRelatedMedia = async (topic, usedImageIds) => {
+  const { entity, keywords, isPerson } = await extractEntity(topic);
+
+  let imageUrl = null;
+
+  // 1. If it's a real named person/org, try Wikipedia first — actual photo of the actual subject
+  if (isPerson || /^[A-Z]/.test(entity)) {
+    const wikiImg = await fetchWikipediaImage(entity);
+    if (wikiImg) imageUrl = wikiImg;
+  }
+
+  // 2. Fall back to Unsplash using contextual keywords (+ entity as a hint), avoiding dupes this run
+  if (!imageUrl) {
+    const query = `${entity} ${keywords}`.trim().slice(0, 90);
+    const unsplashImg = await fetchUnsplashImage(query, usedImageIds);
+    if (unsplashImg) {
+      imageUrl = unsplashImg.url;
+      usedImageIds.add(unsplashImg.id);
+    }
+  }
+
+  // 3. Last resort: keywords-only Unsplash search (broader, still avoids dupes)
+  if (!imageUrl) {
+    const fallbackImg = await fetchUnsplashImage(keywords, usedImageIds);
+    if (fallbackImg) {
+      imageUrl = fallbackImg.url;
+      usedImageIds.add(fallbackImg.id);
+    }
+  }
+
+  if (!imageUrl) {
+    imageUrl = 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=600';
+  }
+
+  // YouTube — pick the video whose title best matches the actual entity + topic
+  let videoUrl = null;
+  try {
+    const youtubeRes = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+      params: {
+        part: 'snippet', q: `${entity} ${topic} India`,
+        type: 'video', maxResults: 3,
+        key: process.env.YOUTUBE_API_KEY,
+        regionCode: 'IN', relevanceLanguage: 'en',
+        videoDuration: 'medium', order: 'relevance',
+      },
+      timeout: 8000,
+    });
     const topicWords = topic.toLowerCase().split(/\s+/);
     const videos = youtubeRes.data.items || [];
     const scored = videos.map(v => {
@@ -133,15 +218,13 @@ const fetchRelatedMedia = async (topic) => {
       const score  = topicWords.filter(w => w.length > 3 && vTitle.includes(w)).length;
       return { ...v, score };
     }).sort((a, b) => b.score - a.score);
-
-    const videoId  = scored[0]?.id?.videoId;
-    const videoUrl = videoId ? `https://www.youtube.com/embed/${videoId}` : null;
-
-    return [imageUrl, videoUrl].filter(Boolean);
+    const videoId = scored[0]?.id?.videoId;
+    if (videoId) videoUrl = `https://www.youtube.com/embed/${videoId}`;
   } catch (err) {
-    console.error('❌ Media fetch error:', err.message);
-    return ['https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=600'];
+    console.log('⚠️ YouTube fetch failed:', err.message);
   }
+
+  return [imageUrl, videoUrl].filter(Boolean);
 };
 
 /* ─── generate article ───────────────────────────────────────── */
@@ -197,6 +280,8 @@ const runContentBot = async () => {
   const topics = await fetchTrendingTopics();
   if (!topics.length) { console.error('❌ No topics. Aborting.'); return; }
 
+  const usedImageIds = new Set(); // tracks Unsplash photo IDs used this run — prevents repeats across articles
+
   let saved = 0;
   for (const trend of topics) {
     try {
@@ -208,7 +293,7 @@ const runContentBot = async () => {
         console.log(`⏭️  Duplicate: ${title}`); continue;
       }
 
-      const media   = await fetchRelatedMedia(title);
+      const media   = await fetchRelatedMedia(title, usedImageIds);
       const content = await generateArticle(title, media);
       if (!content) continue;
 

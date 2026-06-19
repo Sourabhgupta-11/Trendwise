@@ -26,6 +26,7 @@ const HomePage = ({ user, darkMode }) => {
   const bookmarks  = new URLSearchParams(location.search).get("bookmarks");
 
   const bg   = darkMode ? "#0f172a" : "linear-gradient(160deg,#f0f4ff,#f8f9ff,#eef2ff)";
+  const card = darkMode ? "#1e293b" : "#fff";
 
   useEffect(() => {
     let cancelled = false;
@@ -62,6 +63,18 @@ const HomePage = ({ user, darkMode }) => {
     ? new Date(articles[0].createdAt).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})
     : null;
 
+  // Count articles created today (matches local calendar day)
+  const todayCount = useMemo(() => {
+    const today = new Date();
+    return articles.filter(a => {
+      if (!a.createdAt) return false;
+      const d = new Date(a.createdAt);
+      return d.getFullYear() === today.getFullYear()
+          && d.getMonth() === today.getMonth()
+          && d.getDate() === today.getDate();
+    }).length;
+  }, [articles]);
+
   const featuredArticle = articles[0];
 
   return (
@@ -80,7 +93,7 @@ const HomePage = ({ user, darkMode }) => {
             Real trending topics from India — AI-written articles, every day.
           </p>
           <div style={{display:"flex",justifyContent:"center",gap:32,flexWrap:"wrap"}}>
-            {[{label:"Articles",value:loading?"—":articles.length},{label:"Categories",value:8},{label:"Updated",value:lastUpdated||"—"}].map(s=>(
+            {[{label:"Articles",value:loading?"—":articles.length},{label:"Fetched Today",value:loading?"—":todayCount},{label:"Updated",value:lastUpdated||"—"}].map(s=>(
               <div key={s.label} style={{textAlign:"center"}}>
                 <div style={{fontSize:"1.4rem",fontWeight:800,color:"#818cf8"}}>{s.value}</div>
                 <div style={{fontSize:"0.72rem",opacity:.5,marginTop:2}}>{s.label}</div>
