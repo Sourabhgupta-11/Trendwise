@@ -26,7 +26,6 @@ const HomePage = ({ user, darkMode }) => {
   const bookmarks  = new URLSearchParams(location.search).get("bookmarks");
 
   const bg   = darkMode ? "#0f172a" : "linear-gradient(160deg,#f0f4ff,#f8f9ff,#eef2ff)";
-  const card = darkMode ? "#1e293b" : "#fff";
 
   useEffect(() => {
     let cancelled = false;
