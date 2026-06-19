@@ -10,14 +10,15 @@ import axios from "axios";
 axios.defaults.baseURL        = process.env.REACT_APP_API_URL;
 axios.defaults.withCredentials = true;
 axios.defaults.timeout         = 10000;
-const getStorageKey = (base, userId) => userId ? `${base}_${userId}` : base;
 
+// Remove the HTML splash screen once React has painted
 const removeSplash = () => {
   const el = document.getElementById("tw-splash");
   if (el) { el.classList.add("hide"); setTimeout(() => el.remove(), 450); }
 };
 
 const AppWrapper = () => {
+  // Seed user from sessionStorage — renders instantly on repeat visits
   const [user,       setUser]       = useState(() => {
     try { return JSON.parse(sessionStorage.getItem("tw_user")); } catch { return null; }
   });
@@ -27,10 +28,12 @@ const AppWrapper = () => {
   const location  = useLocation();
   const splashRef = useRef(false);
 
+  // Remove splash as soon as component mounts (user may already be cached)
   useEffect(() => {
     if (!splashRef.current) { splashRef.current = true; removeSplash(); }
   }, []);
 
+  // Silently verify session in background — never blocks render
   useEffect(() => {
     if (location.pathname === "/login") { setAuthReady(true); return; }
     axios.get("/api/auth/me")
@@ -38,24 +41,30 @@ const AppWrapper = () => {
       .catch(()  => { setUser(null); sessionStorage.removeItem("tw_user"); })
       .finally(() => setAuthReady(true));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);   
+  }, []);   // only once on mount — not on every route change
 
-  useEffect(() => {
-    if (!user?._id) return;
-    const oldKey = "tw_bookmarks";
-    const newKey = getStorageKey("tw_bookmarks", user._id);
-    if (localStorage.getItem(oldKey) && !localStorage.getItem(newKey)) {
-      localStorage.setItem(newKey, localStorage.getItem(oldKey));
-    }
-    localStorage.removeItem(oldKey); 
-  }, [user?._id]);
-
-
+  // Apply dark mode to <body>
   useEffect(() => {
     document.body.setAttribute("data-theme", darkMode ? "dark" : "light");
     document.body.style.background = darkMode ? "#0f172a" : "";
     localStorage.setItem("tw_dark", darkMode ? "1" : "0");
   }, [darkMode]);
+
+  // Keep user.bookmarks in sync whenever any component toggles a bookmark,
+  // so Navbar count + every ArticleCard reflects the change immediately.
+  useEffect(() => {
+    const onBookmarksChanged = (e) => {
+      if (!Array.isArray(e.detail)) return;
+      setUser(prev => {
+        if (!prev) return prev;
+        const next = { ...prev, bookmarks: e.detail };
+        sessionStorage.setItem("tw_user", JSON.stringify(next));
+        return next;
+      });
+    };
+    window.addEventListener("tw_bookmarks_changed", onBookmarksChanged);
+    return () => window.removeEventListener("tw_bookmarks_changed", onBookmarksChanged);
+  }, []);
 
   const handleLogout = async () => {
     setLoggingOut(true);

@@ -1,7 +1,20 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 
 const Login = () => {
   const backendURL = process.env.REACT_APP_API_URL;
+  const [warming, setWarming] = useState(true);
+
+  // Pre-warm the Render backend the moment this page loads,
+  // so by the time the user clicks "Continue with Google" the
+  // server is already awake and the OAuth redirect is instant.
+  useEffect(() => {
+    let cancelled = false;
+    axios.get(`${backendURL}/api/ping`, { timeout: 20000 })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setWarming(false); });
+    return () => { cancelled = true; };
+  }, [backendURL]);
 
   return (
     <div style={{
@@ -21,17 +34,31 @@ const Login = () => {
 
         <button
           onClick={()=>{ window.location.href=`${backendURL}/api/auth/google`; }}
+          disabled={warming}
           style={{
             width:"100%",display:"flex",alignItems:"center",justifyContent:"center",gap:12,
             padding:"13px 20px",border:"2px solid #e5e7eb",borderRadius:12,
-            background:"#fff",fontSize:"0.95rem",fontWeight:600,color:"#374151",
-            cursor:"pointer",transition:"all .2s",
+            background: warming ? "#f9fafb" : "#fff",
+            fontSize:"0.95rem",fontWeight:600,color: warming ? "#9ca3af" : "#374151",
+            cursor: warming ? "default" : "pointer",transition:"all .2s",
           }}
-          onMouseEnter={e=>{ e.currentTarget.style.borderColor="#4f46e5"; e.currentTarget.style.background="#f5f3ff"; }}
-          onMouseLeave={e=>{ e.currentTarget.style.borderColor="#e5e7eb"; e.currentTarget.style.background="#fff"; }}
+          onMouseEnter={e=>{ if(!warming){ e.currentTarget.style.borderColor="#4f46e5"; e.currentTarget.style.background="#f5f3ff"; }}}
+          onMouseLeave={e=>{ if(!warming){ e.currentTarget.style.borderColor="#e5e7eb"; e.currentTarget.style.background="#fff"; }}}
         >
-          <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" style={{width:20,height:20}}/>
-          Continue with Google
+          {warming ? (
+            <>
+              <span style={{
+                width:16,height:16,border:"2px solid #c7c9f5",borderTopColor:"#4f46e5",
+                borderRadius:"50%",display:"inline-block",animation:"tw-spin .7s linear infinite",
+              }}/>
+              Preparing sign-in…
+            </>
+          ) : (
+            <>
+              <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" style={{width:20,height:20}}/>
+              Continue with Google
+            </>
+          )}
         </button>
 
         <div style={{marginTop:28,display:"flex",justifyContent:"center",gap:20,flexWrap:"wrap"}}>
@@ -43,6 +70,8 @@ const Login = () => {
           By continuing you agree to TrendWise's Terms &amp; Privacy Policy.
         </p>
       </div>
+
+      <style>{`@keyframes tw-spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 };

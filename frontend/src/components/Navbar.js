@@ -5,7 +5,7 @@ const Navbar = ({ user, onLogout, darkMode, toggleDark }) => {
   const [menuOpen,   setMenuOpen]   = useState(false);
   const [searchVal,  setSearchVal]  = useState("");
   const [isMobile,   setIsMobile]   = useState(window.innerWidth < 768);
-  const [bookmarks,  setBookmarks]  = useState(0);
+  const [bookmarks,  setBookmarks]  = useState(user?.bookmarks?.length || 0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -14,16 +14,19 @@ const Navbar = ({ user, onLogout, darkMode, toggleDark }) => {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  // Sync bookmark count from user object whenever it changes
   useEffect(() => {
-    try { setBookmarks(JSON.parse(localStorage.getItem(`tw_bookmarks_${user?._id || "guest"}`) || "[]").length); } catch {}
-  }, [user?._id]);
+    setBookmarks(user?.bookmarks?.length || 0);
+  }, [user]);
 
+  // Live update when ArticleCard/ArticleDetail toggles a bookmark
   useEffect(() => {
-    const onStorage = () => { try { setBookmarks(JSON.parse(localStorage.getItem(`tw_bookmarks_${user?._id || "guest"}`) || "[]").length); } catch {} };
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("tw_bookmarks_changed", onStorage);
-    return () => { window.removeEventListener("storage", onStorage); window.removeEventListener("tw_bookmarks_changed", onStorage); };
-  }, [user?._id]);
+    const onChanged = (e) => {
+      if (Array.isArray(e.detail)) setBookmarks(e.detail.length);
+    };
+    window.addEventListener("tw_bookmarks_changed", onChanged);
+    return () => window.removeEventListener("tw_bookmarks_changed", onChanged);
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -32,7 +35,7 @@ const Navbar = ({ user, onLogout, darkMode, toggleDark }) => {
     setMenuOpen(false);
   };
 
-  const bg    = darkMode ? "#0f172a" : "#1a1a2e";
+  const bg     = darkMode ? "#0f172a" : "#1a1a2e";
   const border = "1px solid rgba(255,255,255,0.07)";
 
   return (
@@ -47,14 +50,12 @@ const Navbar = ({ user, onLogout, darkMode, toggleDark }) => {
 
       <nav style={{background:bg,borderBottom:border,padding:"0 20px",height:60,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:1000,width:"100%",boxSizing:"border-box"}}>
 
-        {/* Logo */}
         <Link to="/" style={{textDecoration:"none",display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
           <span style={{fontSize:"1.25rem"}}>🧠</span>
           <span style={{fontWeight:800,fontSize:"1.15rem",color:"#818cf8",letterSpacing:"-0.3px"}}>TrendWise</span>
           <span style={{fontSize:"0.62rem",fontWeight:700,color:"#6ee7b7",background:"rgba(110,231,183,.12)",border:"1px solid rgba(110,231,183,.3)",borderRadius:999,padding:"2px 7px"}}>AI</span>
         </Link>
 
-        {/* Desktop */}
         {!isMobile && (
           <div style={{display:"flex",alignItems:"center",gap:14}}>
             <form onSubmit={handleSearch} style={{display:"flex"}}>
@@ -64,16 +65,13 @@ const Navbar = ({ user, onLogout, darkMode, toggleDark }) => {
               />
             </form>
 
-            {/* Bookmarks */}
             <Link to="/?bookmarks=1" title="Saved articles" style={{textDecoration:"none",position:"relative",color:"#d1d5db",fontSize:"1.15rem"}}>
               🔖
               {bookmarks > 0 && <span style={{position:"absolute",top:-6,right:-6,background:"#4f46e5",color:"#fff",fontSize:"0.6rem",fontWeight:700,borderRadius:999,padding:"1px 5px",minWidth:16,textAlign:"center"}}>{bookmarks}</span>}
             </Link>
 
-            {/* Dark mode */}
             <button onClick={toggleDark} title="Toggle dark mode"
-              style={{background:"none",border:"1px solid rgba(255,255,255,.15)",borderRadius:999,padding:"5px 11px",cursor:"pointer",fontSize:"1rem",color:"#d1d5db",transition:"all .2s"}}
-            >
+              style={{background:"none",border:"1px solid rgba(255,255,255,.15)",borderRadius:999,padding:"5px 11px",cursor:"pointer",fontSize:"1rem",color:"#d1d5db",transition:"all .2s"}}>
               {darkMode ? "☀️" : "🌙"}
             </button>
 
@@ -99,7 +97,6 @@ const Navbar = ({ user, onLogout, darkMode, toggleDark }) => {
           </div>
         )}
 
-        {/* Mobile icons */}
         {isMobile && (
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <button onClick={toggleDark} style={{background:"none",border:"none",fontSize:"1.1rem",cursor:"pointer",color:"#d1d5db",padding:4}}>{darkMode?"☀️":"🌙"}</button>
@@ -109,7 +106,6 @@ const Navbar = ({ user, onLogout, darkMode, toggleDark }) => {
         )}
       </nav>
 
-      {/* Mobile menu */}
       {isMobile && menuOpen && (
         <div style={{background:darkMode?"#0f172a":"#16213e",borderBottom:border,padding:"12px 20px 20px"}}>
           <form onSubmit={handleSearch} style={{marginBottom:14}}>

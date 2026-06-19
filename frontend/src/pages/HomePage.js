@@ -20,7 +20,7 @@ const HomePage = ({ user, darkMode }) => {
   const [articles, setArticles] = useState([]);
   const [filter,   setFilter]   = useState("All");
   const [loading,  setLoading]  = useState(true);
-  const [view,     setView]     = useState("grid"); 
+  const [view,     setView]     = useState("grid"); // "grid" | "list"
   const location = useLocation();
   const query      = new URLSearchParams(location.search).get("search");
   const bookmarks  = new URLSearchParams(location.search).get("bookmarks");
@@ -50,15 +50,13 @@ const HomePage = ({ user, darkMode }) => {
   const displayed = useMemo(() => {
     let list = articles;
     if (bookmarks) {
-      try {
-        const ids = JSON.parse(localStorage.getItem("tw_bookmarks") || "[]");
-        list = list.filter(a => ids.includes(a._id));
-      } catch {}
+      const ids = user?.bookmarks || [];
+      list = list.filter(a => ids.includes(a._id));
     }
     if (query)          list = list.filter(a => a.title.toLowerCase().includes(query.toLowerCase()));
     if (filter !== "All") list = list.filter(a => a.category === filter);
     return list;
-  }, [articles, query, filter, bookmarks]);
+  }, [articles, query, filter, bookmarks, user]);
 
   const lastUpdated = articles[0]?.createdAt
     ? new Date(articles[0].createdAt).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})

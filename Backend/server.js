@@ -10,6 +10,8 @@ require('./botScheduler.js');
 const app = express();
 app.set('trust proxy', 1);
 
+app.get('/api/ping', (_req, res) => res.json({ status: 'awake', time: new Date() }));
+
 app.use(cors({ origin: 'https://trendwise-swart.vercel.app', credentials: true }));
 app.use(express.json());
 app.use(express.static('public'));
@@ -25,14 +27,11 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Routes
-app.use('/api/article',  require('./routes/article'));
-app.use('/api/comment',  require('./routes/comment'));
-app.use('/api/auth',     require('./routes/auth'));
-app.use('/api/admin',    require('./routes/admin'));
-app.use('/',             require('./routes/sitemap'));
-
-// ── Keep-alive ping (cron-job 1 hits this 2 min before bot)
-app.get('/api/ping', (_req, res) => res.json({ status: 'awake', time: new Date() }));
+app.use('/api/article', require('./routes/article'));
+app.use('/api/comment', require('./routes/comment'));
+app.use('/api/auth',    require('./routes/auth'));
+app.use('/api/admin',   require('./routes/admin'));
+app.use('/',            require('./routes/sitemap'));
 
 // ── Bot trigger — responds immediately, runs in background
 app.get('/api/trigger-bot', async (req, res) => {
@@ -40,6 +39,9 @@ app.get('/api/trigger-bot', async (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' });
 
   res.status(202).json({ success: true, message: 'Bot started' });
+
+  // Small buffer in case Mongo connection is still settling after a cold start
+  await new Promise(r => setTimeout(r, 5000));
 
   try {
     await require('./bot/contentBot')();

@@ -38,13 +38,11 @@ const ArticleDetail = ({ user, darkMode }) => {
       .catch(err => console.error(err.message));
   }, [slug]);
 
+  // Check bookmark status from the user's bookmarks (loaded with the session)
   useEffect(() => {
     if (!article?._id) return;
-    try {
-      const ids = JSON.parse(localStorage.getItem(`tw_bookmarks_${user?._id || "guest"}`) || "[]");
-      setBookmarked(ids.includes(article._id));
-    } catch {}
-  }, [article?._id, user?._id]);
+    setBookmarked(Boolean(user?.bookmarks?.includes?.(article._id)));
+  }, [article?._id, user]);
 
   // Fetch related articles from sessionStorage cache
   useEffect(() => {
@@ -73,15 +71,24 @@ const ArticleDetail = ({ user, darkMode }) => {
     return () => window.removeEventListener("scroll", onScroll);
   }, [article]);
 
-  const toggleBookmark = () => {
+  const [bookmarkBusy, setBookmarkBusy] = useState(false);
+  const toggleBookmark = async () => {
     if (!article) return;
+    if (!user) { navigate("/login"); return; }
+    if (bookmarkBusy) return;
+    setBookmarkBusy(true);
+    const prev = bookmarked;
+    setBookmarked(!prev); // optimistic
     try {
-      const ids  = JSON.parse(localStorage.getItem(`tw_bookmarks_${user?._id || "guest"}`) || "[]");
-      const next = ids.includes(article._id) ? ids.filter(i => i !== article._id) : [...ids, article._id];
-      localStorage.getItem(`tw_bookmarks_${user?._id || "guest"}`, JSON.stringify(next));
-      setBookmarked(!bookmarked);
-      window.dispatchEvent(new Event("tw_bookmarks_changed"));
-    } catch {}
+      const res = await axios.post(`/api/article/${article._id}/bookmark`);
+      setBookmarked(res.data.bookmarked);
+      window.dispatchEvent(new CustomEvent("tw_bookmarks_changed", { detail: res.data.bookmarks }));
+    } catch (err) {
+      console.error("Bookmark error:", err.message);
+      setBookmarked(prev); // revert
+    } finally {
+      setBookmarkBusy(false);
+    }
   };
 
   const handleShare = async () => {

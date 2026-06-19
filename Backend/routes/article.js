@@ -1,16 +1,21 @@
 const express = require('express');
 const router  = express.Router();
 const Article = require('./../models/Article');
+const User    = require('./../models/User');
 
-// GET all articles — lean projection (NO content field, saves huge bandwidth)
+const ensureAuth = (req, res, next) => {
+  if (req.isAuthenticated && req.isAuthenticated()) return next();
+  return res.status(401).json({ error: 'Not authenticated' });
+};
+
+// GET all articles — lean projection (NO content field, saves bandwidth)
 router.get('/', async (req, res) => {
   try {
     const articles = await Article
       .find({}, 'title slug meta media category readTime createdAt')
       .sort({ createdAt: -1 })
-      .lean();                    // plain JS objects, faster serialisation
+      .lean();
 
-    // Cache for 10 minutes — articles only change once a day
     res.set('Cache-Control', 'public, max-age=600');
     res.json(articles);
   } catch (err) {
@@ -40,6 +45,41 @@ router.post('/', async (req, res) => {
     const newArticle = new Article({ title, slug, meta, content, media, category, readTime });
     await newArticle.save();
     res.status(201).json(newArticle);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ── Bookmarks (stored on User document) ──
+
+// GET current user's bookmarked article IDs
+router.get('/bookmarks/mine', ensureAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id, 'bookmarks').lean();
+    res.json(user?.bookmarks || []);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST toggle bookmark for an article
+router.post('/:articleId/bookmark', ensureAuth, async (req, res) => {
+  try {
+    const { articleId } = req.params;
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const idx = user.bookmarks.findIndex(id => id.toString() === articleId);
+    let bookmarked;
+    if (idx >= 0) {
+      user.bookmarks.splice(idx, 1);
+      bookmarked = false;
+    } else {
+      user.bookmarks.push(articleId);
+      bookmarked = true;
+    }
+    await user.save();
+    res.json({ bookmarked, bookmarks: user.bookmarks });
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
   }

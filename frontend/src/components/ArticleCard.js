@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
 import CommentModal from "./CommentSection";
 
 const CAT_COLORS = {Tech:"#3b82f6",Sports:"#22c55e",Politics:"#f59e0b",Entertainment:"#ec4899",Business:"#8b5cf6",Education:"#14b8a6",General:"#6b7280"};
@@ -8,23 +9,30 @@ const ArticleCard = ({ article, user, darkMode }) => {
   const [hovered,   setHovered]   = useState(false);
   const [imgError,  setImgError]  = useState(false);
   const [bookmarked,setBookmarked]= useState(false);
+  const [busy,      setBusy]      = useState(false);
 
+  // Initialize from the user's bookmarks list (loaded once at app/home level)
   useEffect(() => {
-    try {
-      const ids = JSON.parse(localStorage.getItem(`tw_bookmarks_${user?._id || "guest"}`) || "[]");
-      setBookmarked(ids.includes(article._id));
-    } catch {}
-  }, [article._id, user?._id]);
+    setBookmarked(Boolean(user?.bookmarks?.includes?.(article._id)));
+  }, [user, article._id]);
 
-  const toggleBookmark = (e) => {
+  const toggleBookmark = async (e) => {
     e.preventDefault(); e.stopPropagation();
+    if (!user) { window.location.href = "/login"; return; }
+    if (busy) return;
+    setBusy(true);
+    const prev = bookmarked;
+    setBookmarked(!prev); // optimistic
     try {
-      const ids  = JSON.parse(localStorage.getItem(`tw_bookmarks_${user?._id || "guest"}`) || "[]");
-      const next = ids.includes(article._id) ? ids.filter(i=>i!==article._id) : [...ids, article._id];
-      localStorage.getItem(`tw_bookmarks_${user?._id || "guest"}`, JSON.stringify(next));
-      setBookmarked(!bookmarked);
-      window.dispatchEvent(new Event("tw_bookmarks_changed"));
-    } catch {}
+      const res = await axios.post(`/api/article/${article._id}/bookmark`);
+      setBookmarked(res.data.bookmarked);
+      window.dispatchEvent(new CustomEvent("tw_bookmarks_changed", { detail: res.data.bookmarks }));
+    } catch (err) {
+      console.error("Bookmark error:", err.message);
+      setBookmarked(prev); // revert
+    } finally {
+      setBusy(false);
+    }
   };
 
   const date     = article.createdAt ? new Date(article.createdAt).toLocaleDateString("en-IN",{day:"numeric",month:"short"}) : "";
@@ -48,16 +56,13 @@ const ArticleCard = ({ article, user, darkMode }) => {
             alt={article.title} loading="lazy" onError={()=>setImgError(true)}
             style={{width:"100%",height:"100%",objectFit:"cover",transform:hovered?"scale(1.06)":"scale(1)",transition:"transform .4s ease"}}
           />
-          {/* Category badge */}
           <span style={{position:"absolute",top:12,left:12,background:catColor,color:"#fff",fontSize:"0.68rem",fontWeight:700,padding:"3px 10px",borderRadius:999,textTransform:"uppercase",letterSpacing:"0.5px"}}>
             {article.category||"General"}
           </span>
-          {/* Bookmark button */}
-          <button onClick={toggleBookmark} title={bookmarked?"Remove bookmark":"Save article"}
+          <button onClick={toggleBookmark} disabled={busy} title={bookmarked?"Remove bookmark":"Save article"}
             style={{position:"absolute",top:10,right:10,background:bookmarked?"#4f46e5":"rgba(0,0,0,.45)",backdropFilter:"blur(6px)",border:"none",borderRadius:"50%",width:32,height:32,cursor:"pointer",fontSize:"0.85rem",display:"flex",alignItems:"center",justifyContent:"center",transition:"all .2s",color:"#fff"}}>
             {bookmarked ? "🔖" : "🏷️"}
           </button>
-          {/* Date */}
           <span style={{position:"absolute",bottom:10,right:10,background:"rgba(0,0,0,.55)",backdropFilter:"blur(6px)",color:"#fff",fontSize:"0.7rem",fontWeight:600,padding:"3px 10px",borderRadius:999}}>
             {date}
           </span>

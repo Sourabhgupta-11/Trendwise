@@ -9,7 +9,8 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['user', 'admin'],
     default: 'user',
-  }
-},{ timestamps: true });
+  },
+  bookmarks: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Article' }], 
+}, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

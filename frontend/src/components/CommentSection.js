@@ -6,8 +6,7 @@ const CommentModal = ({ articleId, user, onClose, isOpen, darkMode }) => {
   const [input,    setInput]    = useState("");
   const [posting,  setPosting]  = useState(false);
   const [loading,  setLoading]  = useState(false);
-  const [likes,    setLikes]    = useState({});       // commentId -> liked by me (bool)
-  const [likeCounts, setLikeCounts] = useState({});   // commentId -> total count
+  const [likingId, setLikingId] = useState(null); // prevent double-click spam per comment
 
   const bg      = darkMode ? "#0f172a" : "#fff";
   const surface = darkMode ? "#1e293b" : "#f8fafc";
@@ -25,18 +24,7 @@ const CommentModal = ({ articleId, user, onClose, isOpen, darkMode }) => {
     if (!isOpen || !articleId) return;
     setLoading(true);
     axios.get(`/api/comment/${articleId}`)
-      .then(res => {
-        setComments(res.data);
-        try {
-          const storedLiked  = JSON.parse(localStorage.getItem("tw_likes") || "{}");
-          const storedCounts = JSON.parse(localStorage.getItem("tw_like_counts") || "{}");
-          setLikes(storedLiked);
-          // Initialize counts for comments that don't have one yet
-          const next = { ...storedCounts };
-          res.data.forEach(c => { if (!(c._id in next)) next[c._id] = 0; });
-          setLikeCounts(next);
-        } catch {}
-      })
+      .then(res => setComments(res.data))
       .catch(err => console.error("Comments fetch:", err.message))
       .finally(() => setLoading(false));
   }, [isOpen, articleId]);
@@ -46,9 +34,7 @@ const CommentModal = ({ articleId, user, onClose, isOpen, darkMode }) => {
     setPosting(true);
     try {
       const res = await axios.post("/api/comment", { articleId, text: input.trim() });
-      const newC = { ...res.data, userId: { name: user.name, avatar: user.avatar, _id: user._id } };
-      setComments(prev => [...prev, newC]);
-      setLikeCounts(prev => ({ ...prev, [newC._id]: 0 }));
+      setComments(prev => [...prev, res.data]);
       setInput("");
     } catch (err) {
       console.error("Post comment:", err.message);
@@ -57,22 +43,30 @@ const CommentModal = ({ articleId, user, onClose, isOpen, darkMode }) => {
     }
   };
 
-  const toggleLike = (commentId) => {
+  const toggleLike = async (commentId) => {
+    if (!user || likingId === commentId) return;
+    setLikingId(commentId);
+    // optimistic update
+    setComments(prev => prev.map(c => c._id === commentId
+      ? { ...c, likedByMe: !c.likedByMe, likeCount: c.likeCount + (c.likedByMe ? -1 : 1) }
+      : c
+    ));
     try {
-      const storedLiked  = JSON.parse(localStorage.getItem("tw_likes") || "{}");
-      const storedCounts = JSON.parse(localStorage.getItem("tw_like_counts") || "{}");
-
-      const isLiked = !storedLiked[commentId];
-      const nextLiked  = { ...storedLiked, [commentId]: isLiked };
-      const currentCount = storedCounts[commentId] ?? 0;
-      const nextCount = isLiked ? currentCount + 1 : Math.max(0, currentCount - 1);
-      const nextCounts = { ...storedCounts, [commentId]: nextCount };
-
-      localStorage.setItem("tw_likes", JSON.stringify(nextLiked));
-      localStorage.setItem("tw_like_counts", JSON.stringify(nextCounts));
-      setLikes(nextLiked);
-      setLikeCounts(nextCounts);
-    } catch {}
+      const res = await axios.post(`/api/comment/${commentId}/like`);
+      setComments(prev => prev.map(c => c._id === commentId
+        ? { ...c, likedByMe: res.data.likedByMe, likeCount: res.data.likeCount }
+        : c
+      ));
+    } catch (err) {
+      console.error("Like error:", err.message);
+      // revert on failure
+      setComments(prev => prev.map(c => c._id === commentId
+        ? { ...c, likedByMe: !c.likedByMe, likeCount: c.likeCount + (c.likedByMe ? -1 : 1) }
+        : c
+      ));
+    } finally {
+      setLikingId(null);
+    }
   };
 
   const handleKey = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); postComment(); } };
@@ -133,8 +127,6 @@ const CommentModal = ({ articleId, user, onClose, isOpen, darkMode }) => {
             </div>
           ) : (
             comments.map((c, idx) => {
-              const isLiked = likes[c._id];
-              const count   = likeCounts[c._id] ?? 0;
               const initials = (c.userId?.name || "U").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
               return (
                 <div key={c._id || idx} style={{display:"flex",gap:12,marginBottom:20,animation:"tw-fadein .3s ease"}}>
@@ -158,14 +150,14 @@ const CommentModal = ({ articleId, user, onClose, isOpen, darkMode }) => {
                     </div>
 
                     <div style={{display:"flex",alignItems:"center",gap:12,marginTop:6}}>
-                      <button onClick={()=>toggleLike(c._id)}
-                        style={{background:"none",border:"none",cursor:"pointer",fontSize:"0.78rem",color:isLiked?"#4f46e5":muted,fontWeight:600,padding:0,transition:"color .15s",display:"flex",alignItems:"center",gap:5}}
-                        title={isLiked?"Unlike":"Like"}>
+                      <button onClick={()=>toggleLike(c._id)} disabled={!user}
+                        style={{background:"none",border:"none",cursor:user?"pointer":"default",fontSize:"0.78rem",color:c.likedByMe?"#4f46e5":muted,fontWeight:600,padding:0,transition:"color .15s",display:"flex",alignItems:"center",gap:5}}
+                        title={!user ? "Sign in to like" : (c.likedByMe?"Unlike":"Like")}>
                         <span>👍</span>
-                        <span>{isLiked?"Liked":"Like"}</span>
-                        {count > 0 && (
-                          <span style={{background:darkMode?"#1e293b":"#f3f4f6",color:isLiked?"#4f46e5":muted,padding:"1px 7px",borderRadius:999,fontSize:"0.7rem",fontWeight:700}}>
-                            {count}
+                        <span>{c.likedByMe?"Liked":"Like"}</span>
+                        {c.likeCount > 0 && (
+                          <span style={{background:darkMode?"#1e293b":"#f3f4f6",color:c.likedByMe?"#4f46e5":muted,padding:"1px 7px",borderRadius:999,fontSize:"0.7rem",fontWeight:700}}>
+                            {c.likeCount}
                           </span>
                         )}
                       </button>
@@ -193,7 +185,6 @@ const CommentModal = ({ articleId, user, onClose, isOpen, darkMode }) => {
                 </div>
               )}
 
-              {/* Flex row: textarea + button side by side, vertically centered */}
               <div style={{flexGrow:1,display:"flex",alignItems:"flex-end",gap:8,
                   border:`1.5px solid ${input.trim()?"#4f46e5":(darkMode?"#334155":"#e5e7eb")}`,
                   borderRadius:14,background:surface,padding:"6px 8px 6px 14px",transition:"border-color .2s"}}>
